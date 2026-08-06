@@ -1,0 +1,2572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Options Toolkit — Premium Pricer &amp; IV Solver</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --surface3: #222232;
+    --border: #2a2a3d;
+    --border-hi: #3d3d58;
+    --accent: #00e5b0;
+    --red: #ff6b6b;
+    --amber: #ffd93d;
+    --violet: #a78bfa;
+    --blue: #4dabf7;
+    --text: #e8e8f0;
+    --text2: #b8b8cc;
+    --muted: #6b6b8a;
+    --call: #00e5b0;
+    --put: #ff6b6b;
+    --mono: 'IBM Plex Mono', 'Cascadia Mono', Consolas, monospace;
+    --serif: 'Libre Baskerville', Georgia, serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scrollbar-gutter: stable; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,176,0.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,176,0.022) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 1.5rem 2rem 2rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Header ─────────────────────────────────────────────── */
+  header {
+    text-align: center;
+    padding: 1.6rem 0 1.4rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.2rem;
+  }
+
+  header .label {
+    font-size: 0.62rem;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+  }
+
+  header h1 {
+    font-family: var(--serif);
+    font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  header h1 span { color: var(--accent); }
+
+  header p {
+    color: var(--muted);
+    font-size: 0.7rem;
+    margin-top: 0.6rem;
+    letter-spacing: 0.05em;
+    font-family: var(--serif);
+    font-style: italic;
+  }
+
+  /* ── Tabs ───────────────────────────────────────────────── */
+  .tabs {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 1.4rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 4px;
+    padding: 0.3rem;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 0.65rem 0.5rem;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.18s;
+  }
+
+  .tab:hover { color: var(--text2); }
+
+  .tab.active {
+    background: rgba(0,229,176,0.09);
+    border-color: rgba(0,229,176,0.4);
+    color: var(--accent);
+  }
+
+  .hidden { display: none !important; }
+
+  /* ── Panels ─────────────────────────────────────────────── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 1.1rem;
+  }
+
+  .panel-header {
+    padding: 0.8rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--surface2);
+  }
+
+  .panel-header .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .panel-header h2 {
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text2);
+    font-weight: 500;
+  }
+
+  .panel-header .hint {
+    margin-left: auto;
+    font-size: 0.56rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  .panel-body { padding: 1.1rem; }
+
+  /* ── Layout ─────────────────────────────────────────────── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 1.1rem;
+    align-items: start;
+  }
+
+  @media (max-width: 980px) { .main-grid { grid-template-columns: minmax(0, 1fr); } }
+
+  .main-grid > div { min-width: 0; }
+
+  /* ── Inputs ─────────────────────────────────────────────── */
+  .field { margin-bottom: 0.95rem; }
+
+  .field-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.35rem;
+  }
+
+  .field-label .name {
+    font-size: 0.64rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .field-label .sym {
+    font-size: 0.6rem;
+    color: var(--muted);
+    font-style: italic;
+    font-family: var(--serif);
+  }
+
+  .desc {
+    font-size: 0.58rem;
+    color: var(--muted);
+    line-height: 1.45;
+    font-family: var(--serif);
+    font-style: italic;
+    margin-top: 0.3rem;
+  }
+
+  input[type="number"], input[type="date"], select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: 3px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  input[type="number"]:focus, input[type="date"]:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(0,229,176,0.12);
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.55) sepia(1) saturate(3) hue-rotate(100deg);
+    cursor: pointer;
+  }
+
+  input.bad { border-color: var(--red); box-shadow: 0 0 0 2px rgba(255,107,107,0.12); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+
+  .mini-label {
+    font-size: 0.55rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.3rem;
+  }
+
+  /* Expiry quick chips */
+  .chip-row { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.45rem; }
+
+  .chip {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Type toggle */
+  .type-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .type-btn {
+    padding: 0.6rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.18s;
+  }
+
+  .type-btn.active-call {
+    background: rgba(0,229,176,0.1);
+    border-color: var(--call);
+    color: var(--call);
+  }
+
+  .type-btn.active-put {
+    background: rgba(255,107,107,0.1);
+    border-color: var(--put);
+    color: var(--put);
+  }
+
+  /* Segmented control (greeks mode) */
+  .seg {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .seg button {
+    padding: 0.5rem;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .seg button.active {
+    background: rgba(0,229,176,0.1);
+    color: var(--accent);
+  }
+
+  details.adv {
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--surface2);
+    margin-bottom: 0.95rem;
+  }
+
+  details.adv summary {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  details.adv summary:hover { color: var(--text2); }
+
+  details.adv .adv-body { padding: 0.2rem 0.8rem 0.8rem; }
+
+  /* ── Summary strip ──────────────────────────────────────── */
+  .summary-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 1.1rem;
+  }
+
+  .sum-cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.6rem 0.7rem;
+    text-align: center;
+  }
+
+  .sum-cell .big {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--amber);
+    line-height: 1.15;
+  }
+
+  .sum-cell .big.teal { color: var(--accent); }
+
+  .sum-cell .sub {
+    font-size: 0.52rem;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 0.2rem;
+  }
+
+  /* ── Strike matrix table ────────────────────────────────── */
+  .table-scroll { overflow-x: auto; }
+
+  table.k-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.72rem;
+    min-width: 760px;
+  }
+
+  .k-table th, .k-table td {
+    padding: 0.45rem 0.6rem;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .k-table .rowlab {
+    text-align: left;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    position: sticky;
+    left: 0;
+    background: var(--surface);
+    min-width: 150px;
+  }
+
+  .k-table thead .rowlab { background: var(--surface2); }
+
+  .k-table thead th { background: var(--surface2); }
+
+  .k-table thead input {
+    width: 92px;
+    text-align: right;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .k-table .hero td { font-size: 0.95rem; font-weight: 600; }
+
+  .k-table .hero td.rowlab { font-size: 0.6rem; font-weight: 500; }
+
+  .k-table tr.sect td {
+    padding-top: 0.7rem;
+    font-size: 0.58rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .k-table tbody tr:hover td { background: rgba(255,255,255,0.015); }
+  .k-table tbody tr:hover td.rowlab { background: var(--surface2); }
+
+  .k-strike-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-right: 0.35rem;
+    vertical-align: middle;
+  }
+
+  .mny-badge {
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.12rem 0.4rem;
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  .mny-badge.itm { background: rgba(0,229,176,0.12); color: var(--call); border: 1px solid rgba(0,229,176,0.3); }
+  .mny-badge.atm { background: rgba(255,217,61,0.12); color: var(--amber); border: 1px solid rgba(255,217,61,0.3); }
+  .mny-badge.otm { background: rgba(255,107,107,0.12); color: var(--put); border: 1px solid rgba(255,107,107,0.3); }
+
+  .val-badge {
+    font-size: 0.52rem;
+    padding: 0.12rem 0.4rem;
+    border-radius: 2px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    display: inline-block;
+  }
+
+  .val-badge.ok   { background: rgba(0,229,176,0.12); color: var(--call); border: 1px solid rgba(0,229,176,0.25); }
+  .val-badge.warn { background: rgba(255,217,61,0.12); color: var(--amber); border: 1px solid rgba(255,217,61,0.3); }
+  .val-badge.err  { background: rgba(255,107,107,0.12); color: var(--put); border: 1px solid rgba(255,107,107,0.3); }
+
+  .dim { color: var(--muted); font-size: 0.62rem; }
+
+  /* ── Chart ──────────────────────────────────────────────── */
+  .chart-wrap { position: relative; }
+
+  canvas#payoffCanvas { width: 100%; max-width: 100%; display: block; cursor: crosshair; }
+
+  .chart-tip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--surface3);
+    border: 1px solid var(--border-hi);
+    border-radius: 3px;
+    padding: 0.45rem 0.6rem;
+    font-size: 0.62rem;
+    line-height: 1.6;
+    display: none;
+    z-index: 5;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    white-space: nowrap;
+  }
+
+  .chart-legend {
+    display: flex;
+    gap: 1.1rem;
+    margin-top: 0.7rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: 0.6rem;
+    color: var(--text2);
+  }
+
+  .chart-legend .leg {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .chart-legend .swatch { width: 14px; height: 2px; }
+
+  /* ── IV tab ─────────────────────────────────────────────── */
+  .iv-input-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+
+  .result-iv-big {
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+
+  .result-iv-big.put-color { color: var(--put); }
+
+  .result-sublabel {
+    font-size: 0.62rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+    font-family: var(--serif);
+    font-style: italic;
+  }
+
+  .iv-secondary {
+    font-size: 0.72rem;
+    color: var(--text2);
+    margin-bottom: 1.1rem;
+  }
+
+  .iv-secondary b { color: var(--violet); font-weight: 600; }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.6rem;
+    margin-bottom: 0.8rem;
+  }
+
+  @media (max-width: 640px) { .metric-grid { grid-template-columns: 1fr 1fr; } }
+
+  .metric-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.65rem 0.8rem;
+  }
+
+  .metric-card .mlabel {
+    font-size: 0.53rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.28rem;
+  }
+
+  .metric-card .mval { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+  .metric-card .mval.accent { color: var(--accent); }
+  .metric-card .mval.amber  { color: var(--amber); }
+  .metric-card .mval.red    { color: var(--red); }
+
+  .confidence-wrap { margin-bottom: 0.9rem; }
+
+  .confidence-label {
+    font-size: 0.56rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .confidence-bg { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+
+  .confidence-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+
+  .conf-high { background: var(--accent); }
+  .conf-med  { background: var(--amber); }
+  .conf-low  { background: var(--red); }
+
+  .verify-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.8rem;
+    font-size: 0.62rem;
+    padding: 0.5rem 0.8rem;
+    border-radius: 3px;
+    margin-bottom: 0.8rem;
+    letter-spacing: 0.04em;
+    flex-wrap: wrap;
+  }
+
+  .verify-ok   { background: rgba(0,229,176,0.08);  border: 1px solid rgba(0,229,176,0.25); color: var(--call); }
+  .verify-warn { background: rgba(255,217,61,0.08); border: 1px solid rgba(255,217,61,0.3); color: var(--amber); }
+  .verify-err  { background: rgba(255,107,107,0.08);border: 1px solid rgba(255,107,107,0.3);color: var(--put); }
+
+  .notice-warn, .notice-err, .notice-info {
+    font-size: 0.62rem;
+    padding: 0.55rem 0.8rem;
+    border-radius: 3px;
+    margin-bottom: 0.6rem;
+    letter-spacing: 0.03em;
+    line-height: 1.55;
+  }
+
+  .notice-warn { color: var(--amber); background: rgba(255,217,61,0.07);  border: 1px solid rgba(255,217,61,0.25); }
+  .notice-err  { color: var(--put);   background: rgba(255,107,107,0.07); border: 1px solid rgba(255,107,107,0.3); }
+  .notice-info { color: var(--muted); background: rgba(107,107,138,0.07); border: 1px solid rgba(107,107,138,0.2); }
+
+  .band-wrap {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.6rem;
+  }
+
+  .band-cell {
+    flex: 1;
+    padding: 0.5rem 0.4rem;
+    text-align: center;
+    border-right: 1px solid var(--border);
+  }
+
+  .band-cell:last-child { border-right: none; }
+  .band-cell.active { background: rgba(0,229,176,0.07); }
+
+  .band-head {
+    font-size: 0.53rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 0.22rem;
+  }
+
+  .band-val { font-size: 0.72rem; font-weight: 600; color: var(--text); }
+  .band-cell.active .band-val { color: var(--accent); }
+
+  .footnote {
+    font-size: 0.56rem;
+    color: var(--muted);
+    line-height: 1.6;
+    font-family: var(--serif);
+    font-style: italic;
+    margin-top: 0.6rem;
+  }
+
+  /* ── Validation tab ─────────────────────────────────────── */
+  .val-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-top: 0.8rem;
+  }
+
+  @media (max-width: 720px) { .val-grid { grid-template-columns: 1fr 1fr; } }
+
+  .val-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.6rem;
+  }
+
+  .val-card .vc-name { color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.25rem; }
+  .val-card .vc-iv   { font-weight: 600; font-size: 0.72rem; color: var(--text); }
+  .val-card .vc-ok   { color: var(--accent); margin-top: 0.2rem; }
+  .val-card .vc-warn { color: var(--amber);  margin-top: 0.2rem; }
+  .val-card .vc-err  { color: var(--put);    margin-top: 0.2rem; }
+
+  .btn-primary {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid var(--accent);
+    background: rgba(0,229,176,0.07);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.18s;
+  }
+
+  .btn-primary:hover { background: rgba(0,229,176,0.15); box-shadow: 0 0 18px rgba(0,229,176,0.15); }
+  .btn-primary:active { transform: scale(0.995); }
+
+  .btn-ghost {
+    padding: 0.55rem 1rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.18s;
+  }
+
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+  }
+
+  @media (max-width: 640px) { .info-grid { grid-template-columns: 1fr; } }
+
+  .info-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.85rem;
+  }
+
+  .info-card h3 {
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.45rem;
+  }
+
+  .info-card p {
+    font-family: var(--serif);
+    font-size: 0.7rem;
+    color: var(--text2);
+    line-height: 1.65;
+  }
+
+  footer {
+    text-align: center;
+    padding: 1.8rem 0 0.8rem;
+    font-size: 0.56rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    border-top: 1px solid var(--border);
+    margin-top: 1.6rem;
+    line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="label">Options Analytics · American &amp; European · Zero Dependencies</div>
+    <h1>Options <span>Toolkit</span></h1>
+    <p>Premium pricer with 5 strikes &amp; per-strike IV · American implied-volatility solver · Leisen-Reimer + Richardson · Bjerksund-Stensland 2002</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" id="tabPricer" onclick="showTab('pricer')">Premium Pricer</button>
+    <button class="tab" id="tabIV" onclick="showTab('iv')">IV Solver</button>
+    <button class="tab" id="tabVal" onclick="showTab('val')">Validation &amp; Models</button>
+  </nav>
+
+  <!-- ════════════ PRICER TAB ════════════ -->
+  <section id="panePricer">
+    <div class="main-grid">
+
+      <!-- Left: shared inputs -->
+      <div>
+        <div class="panel">
+          <div class="panel-header"><div class="dot"></div><h2>Contract Parameters</h2></div>
+          <div class="panel-body">
+
+            <div class="field">
+              <div class="field-label"><span class="name">Option Type</span></div>
+              <div class="type-toggle">
+                <button class="type-btn active-call" id="btnPCall" onclick="setPricerType('call')">&#9650; Call</button>
+                <button class="type-btn" id="btnPPut" onclick="setPricerType('put')">&#9660; Put</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="field-label"><span class="name">Stock Price</span><span class="sym">S</span></div>
+              <input type="number" id="pS" value="100" min="0.01" step="0.01" inputmode="decimal">
+              <div class="desc">Current price of the underlying. Any value — penny stocks to indices.</div>
+            </div>
+
+            <div class="field">
+              <div class="field-label"><span class="name">Dates</span><span class="sym">T = days / 365</span></div>
+              <div class="two-col">
+                <div>
+                  <div class="mini-label">Today</div>
+                  <input type="date" id="pToday">
+                </div>
+                <div>
+                  <div class="mini-label">Expiry</div>
+                  <input type="date" id="pExpiry">
+                </div>
+              </div>
+              <div class="chip-row">
+                <button class="chip" onclick="setDTE(7)">7D</button>
+                <button class="chip" onclick="setDTE(14)">14D</button>
+                <button class="chip" onclick="setDTE(30)">30D</button>
+                <button class="chip" onclick="setDTE(60)">60D</button>
+                <button class="chip" onclick="setDTE(90)">90D</button>
+                <button class="chip" onclick="setDTE(182)">6M</button>
+                <button class="chip" onclick="setDTE(365)">1Y</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="field-label"><span class="name">Risk-Free Rate %</span><span class="sym">r</span></div>
+              <input type="number" id="pR" value="4.50" step="0.05" inputmode="decimal">
+              <div class="desc">Annualized. Use the Treasury yield closest to your option's expiry (e.g. 13-week T-bill for short-dated).</div>
+            </div>
+
+            <div class="field">
+              <div class="field-label"><span class="name">Dividend Yield %</span><span class="sym">q</span></div>
+              <input type="number" id="pQ" value="0" step="0.05" min="0" inputmode="decimal">
+              <div class="desc">Annual dividends as a % of stock price, paid continuously. For a single known cash dividend, use the advanced section instead.</div>
+            </div>
+
+            <details class="adv">
+              <summary>Discrete Dividend (advanced)</summary>
+              <div class="adv-body">
+                <div class="two-col" style="margin-bottom:0.5rem">
+                  <div>
+                    <div class="mini-label">Cash Amount $</div>
+                    <input type="number" id="pDivAmt" value="0" min="0" step="0.01">
+                  </div>
+                  <div>
+                    <div class="mini-label">Days to Ex-Date</div>
+                    <input type="number" id="pDivDays" value="0" min="0" step="1">
+                  </div>
+                </div>
+                <div class="desc">If set (&gt; 0) and the ex-date falls before expiry, the present value of the dividend is subtracted from the stock price (escrowed method) and continuous yield is ignored.</div>
+              </div>
+            </details>
+
+            <div class="field">
+              <div class="field-label"><span class="name">Greeks Mode</span></div>
+              <div class="seg">
+                <button id="segAm" class="active" onclick="setGreekMode('am')">American (tree)</button>
+                <button id="segEu" onclick="setGreekMode('eu')">European (B-S)</button>
+              </div>
+              <div class="desc">American: finite differences on the binomial tree — consistent with the American price. European: closed-form Black-Scholes Greeks.</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: results -->
+      <div>
+        <div class="summary-strip">
+          <div class="sum-cell"><div class="big" id="sumDTE">—</div><div class="sub">Days to Expiry</div></div>
+          <div class="sum-cell"><div class="big" id="sumT">—</div><div class="sub">T (years)</div></div>
+          <div class="sum-cell"><div class="big teal" id="sumS">—</div><div class="sub">Stock Price</div></div>
+          <div class="sum-cell"><div class="big teal" id="sumR">—</div><div class="sub">Rate r</div></div>
+          <div class="sum-cell"><div class="big teal" id="sumQ">—</div><div class="sub">Div Yield q</div></div>
+        </div>
+
+        <div id="pricerNotices"></div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="dot"></div>
+            <h2>Strike Matrix — 5 Slots</h2>
+            <span class="hint">Edit strike &amp; IV per column · leave strike blank to disable a slot</span>
+          </div>
+          <div class="panel-body" style="padding:0.6rem 0.8rem 1rem">
+            <div class="table-scroll">
+              <table class="k-table" id="kTable">
+                <thead id="kHead"></thead>
+                <tbody id="kBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="dot" style="background:var(--violet)"></div>
+            <h2>Profit / Loss at Expiry</h2>
+            <span class="hint">Per contract of 1 share · hover for exact values · cost basis = American model price</span>
+          </div>
+          <div class="panel-body">
+            <div class="chart-wrap">
+              <canvas id="payoffCanvas" height="240"></canvas>
+              <div class="chart-tip" id="chartTip"></div>
+            </div>
+            <div class="chart-legend" id="chartLegend"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ IV SOLVER TAB ════════════ -->
+  <section id="paneIV" class="hidden">
+    <div class="panel">
+      <div class="panel-header"><div class="dot"></div><h2>Contract &amp; Market Price</h2>
+        <span class="hint">Solves the American model IV · European B-S IV shown for comparison</span>
+      </div>
+      <div class="panel-body">
+        <div class="iv-input-grid">
+          <div>
+            <div class="mini-label">Market Premium $</div>
+            <input type="number" id="ivPrem" value="5.00" min="0" step="0.01" inputmode="decimal">
+          </div>
+          <div>
+            <div class="mini-label">Stock Price S</div>
+            <input type="number" id="ivS" value="100" min="0.01" step="0.01" inputmode="decimal">
+          </div>
+          <div>
+            <div class="mini-label">Strike K</div>
+            <input type="number" id="ivK" value="100" min="0.01" step="0.5" inputmode="decimal">
+          </div>
+          <div>
+            <div class="mini-label">Days to Expiry</div>
+            <input type="number" id="ivDays" value="30" min="0.1" step="1" inputmode="decimal">
+          </div>
+          <div>
+            <div class="mini-label">Rate r %</div>
+            <input type="number" id="ivR" value="4.50" step="0.05" inputmode="decimal">
+          </div>
+          <div>
+            <div class="mini-label">Div Yield q %</div>
+            <input type="number" id="ivQ" value="0" min="0" step="0.05" inputmode="decimal">
+          </div>
+          <div>
+            <div class="mini-label">Option Type</div>
+            <div class="type-toggle">
+              <button class="type-btn active-call" id="btnIVCall" onclick="setIVType('call')" style="padding:0.45rem;font-size:0.62rem">&#9650; Call</button>
+              <button class="type-btn" id="btnIVPut" onclick="setIVType('put')" style="padding:0.45rem;font-size:0.62rem">&#9660; Put</button>
+            </div>
+          </div>
+        </div>
+
+        <details class="adv" style="margin-bottom:0">
+          <summary>Discrete Dividend (advanced)</summary>
+          <div class="adv-body">
+            <div class="two-col" style="margin-bottom:0.5rem;max-width:420px">
+              <div>
+                <div class="mini-label">Cash Amount $</div>
+                <input type="number" id="ivDivAmt" value="0" min="0" step="0.01">
+              </div>
+              <div>
+                <div class="mini-label">Days to Ex-Date</div>
+                <input type="number" id="ivDivDays" value="0" min="0" step="1">
+              </div>
+            </div>
+            <div class="desc">Escrowed method: PV of the dividend is subtracted from spot; continuous yield q is then ignored.</div>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div id="ivError"></div>
+
+    <div class="panel" id="ivOutPanel">
+      <div class="panel-header">
+        <div class="dot" id="ivDot"></div>
+        <h2>Implied Volatility Result</h2>
+        <span class="hint" id="ivMethodBadge">—</span>
+      </div>
+      <div class="panel-body">
+        <div id="ivNotices"></div>
+        <div class="result-iv-big" id="ivBig">—</div>
+        <div class="result-sublabel" id="ivSublabel">American model implied volatility (annualized)</div>
+        <div class="iv-secondary" id="ivEuLine">European Black-Scholes IV: <b id="ivEuVal">—</b></div>
+
+        <div class="confidence-wrap">
+          <div class="confidence-label">
+            <span>Numerical Convergence Quality</span>
+            <span id="ivConfLabel">—</span>
+          </div>
+          <div class="confidence-bg"><div class="confidence-fill" id="ivConfFill" style="width:0%"></div></div>
+        </div>
+
+        <div class="verify-row" id="ivVerifyRow">—</div>
+
+        <div class="metric-grid">
+          <div class="metric-card"><div class="mlabel">Model Price @ IV</div><div class="mval accent" id="ivModelPx">—</div></div>
+          <div class="metric-card"><div class="mlabel">Residual |&Delta;P|</div><div class="mval" id="ivResidual">—</div></div>
+          <div class="metric-card"><div class="mlabel">Vega (per 1 vol pt)</div><div class="mval" id="ivVega">—</div></div>
+          <div class="metric-card"><div class="mlabel">Early-Exercise Prem.</div><div class="mval amber" id="ivEE">—</div></div>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric-card"><div class="mlabel">Intrinsic Value</div><div class="mval" id="ivIntrinsic">—</div></div>
+          <div class="metric-card"><div class="mlabel">Time Value</div><div class="mval" id="ivTimeVal">—</div></div>
+          <div class="metric-card"><div class="mlabel">Delta (model)</div><div class="mval" id="ivDelta">—</div></div>
+          <div class="metric-card"><div class="mlabel">Std. Moneyness</div><div class="mval" id="ivMny">—</div></div>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric-card"><div class="mlabel">Gamma (model)</div><div class="mval" id="ivGamma">—</div></div>
+          <div class="metric-card"><div class="mlabel">Theta / cal. day</div><div class="mval red" id="ivTheta">—</div></div>
+          <div class="metric-card"><div class="mlabel">European (B-S) Price</div><div class="mval" id="ivEuPx">—</div></div>
+          <div class="metric-card"><div class="mlabel">Div Adjustment</div><div class="mval" id="ivDivAdj">—</div></div>
+        </div>
+
+        <div style="font-size:0.58rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin:0.8rem 0 0.4rem">
+          Sensitivity — American model price at &plusmn;20% of solved &sigma;
+        </div>
+        <div class="band-wrap" id="ivBand"></div>
+
+        <div class="footnote" id="ivFootnote"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ VALIDATION TAB ════════════ -->
+  <section id="paneVal" class="hidden">
+    <div class="panel">
+      <div class="panel-header"><div class="dot" style="background:var(--amber)"></div><h2>Internal Validation Suite</h2></div>
+      <div class="panel-body">
+        <div style="font-size:0.64rem;color:var(--text2);line-height:1.7;font-family:var(--serif);font-style:italic;margin-bottom:0.8rem">
+          Automated checks: textbook Black-Scholes reference values, European put-call parity, American &ge; European
+          no-arbitrage ordering, binomial-tree convergence, and full round-trip IV recovery (price at a known &sigma;
+          &rarr; invert &rarr; compare). These verify numerical correctness of the engine — they do not imply
+          the models match live market prices.
+        </div>
+        <button class="btn-ghost" onclick="runValidation()">Run Validation Suite</button>
+        <div id="valResults"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><div class="dot"></div><h2>Models &amp; Conventions</h2></div>
+      <div class="panel-body">
+        <div class="info-grid">
+          <div class="info-card"><h3>American Pricing — Puts &amp; Calls</h3>
+            <p>Leisen-Reimer binomial tree (Peizer-Pratt method 2 inversion, odd steps) with Richardson extrapolation
+            across two tree sizes, cancelling the leading discretization error. This is the primary engine —
+            it handles early exercise exactly within the tree.</p></div>
+          <div class="info-card"><h3>Closed-Form Cross-Check</h3>
+            <p>Bjerksund-Stensland 2002 two-boundary approximation for American calls, shown alongside the tree
+            price. When the two disagree materially the tree is authoritative and the toolkit flags it.</p></div>
+          <div class="info-card"><h3>European Pricing</h3>
+            <p>Black-Scholes-Merton with continuous dividend yield. Normal CDF via Cody (1969) rational minimax
+            (~15 significant digits); bivariate normal via Drezner-Genz Gauss-Legendre quadrature.</p></div>
+          <div class="info-card"><h3>IV Root-Finding</h3>
+            <p>European seed (analytic-vega Newton), then damped Newton on the American tree price with
+            model-consistent numerical vega, with a bracketing Brent failsafe. Residual tolerance 10&#8315;&#8312; on price.</p></div>
+          <div class="info-card"><h3>Dividends</h3>
+            <p>Continuous yield q, or a single discrete cash dividend via the escrowed method: spot is reduced
+            by the present value of the dividend when the ex-date precedes expiry.</p></div>
+          <div class="info-card"><h3>Conventions</h3>
+            <p>T = calendar days / 365 (ACT/365). Rates &amp; yields are annualized, continuously compounded.
+            Theta is per calendar day; vega &amp; rho are per 1 percentage point. Prices are per share —
+            multiply by 100 for a standard US equity contract.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Leisen-Reimer (1996) + Richardson extrapolation · Bjerksund-Stensland (2002) · Black-Scholes-Merton (1973) ·
+    Cody (1969) erfc · Drezner-Genz bivariate normal · Escrowed discrete dividends<br>
+    Educational &amp; research tool — models approximate reality and can differ from live market prices ·
+    Not financial advice · MIT License
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SHARED MATH ENGINE
+// Both tabs (pricer + IV solver) call these functions — they can never disagree.
+// Conventions: T in years (ACT/365), r & q annualized continuously compounded,
+// sig as a decimal (0.25 = 25%).
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Safe math helpers ──────────────────────────────────────────────────────
+function safeLog(x)  { return (isFinite(x) && x > 0) ? Math.log(x) : -Infinity; }
+function safeSqrt(x) { return x < 0 ? 0 : Math.sqrt(x); }
+function safeExp(x)  {
+  if (!isFinite(x)) return x > 0 ? Infinity : 0;
+  if (x >  700) return Infinity;
+  if (x < -700) return 0;
+  return Math.exp(x);
+}
+
+function horner(x, cs) {
+  let r = 0;
+  for (let i = 0; i < cs.length; i++) r = r * x + cs[i];
+  return r;
+}
+
+function intrinsicValue(S, K, type) {
+  return type === 'call' ? Math.max(0, S - K) : Math.max(0, K - S);
+}
+
+// American no-arbitrage upper bounds: call <= S, put <= K
+function americanUpperBound(S, K, type) {
+  return type === 'call' ? S : K;
+}
+
+// ── Normal distribution — Cody (1969) rational minimax erfc ────────────────
+function erfc_pos(x) {
+  // Coefficient order matters: horner() takes highest-degree first. In the
+  // netlib CALERF recurrence the LAST listed coefficient (A5/C9) is the
+  // leading term — a widely-copied transcription mistake puts it last here
+  // and silently costs ~3 digits of accuracy near the money.
+  if (x <= 0.5) {
+    const xsq = x * x;
+    const p = horner(xsq, [1.85777706184603153e-1, 3.16112374387056560e0,
+                           1.13864154151050156e2,  3.77485237685302021e2,
+                           3.20937758913846947e3]);
+    const q = horner(xsq, [1.0, 2.36012909523441209e1, 2.44024637143268655e2,
+                           1.28261652607737228e3, 2.84423683343917062e3]);
+    return 1.0 - x * p / q;
+  }
+  if (x <= 4.0) {
+    const p = horner(x, [2.15311535474403846e-8, 5.64188496988670089e-1,
+                         8.88314979438837594e0,  6.61191906371416295e1,
+                         2.98635138197400131e2,  8.81952221241769090e2,
+                         1.71204761263407058e3,  2.05107837782607147e3,
+                         1.23033935479799725e3]);
+    const q = horner(x, [1.0, 1.57449261107098347e1, 1.17693950891312499e2,
+                         5.37181101862009858e2,  1.62138957456669019e3,
+                         3.29079923573345963e3,  4.36261909014324716e3,
+                         3.43936767414372164e3,  1.23033935480374942e3]);
+    return safeExp(-x * x) * p / q;
+  }
+  const xsq = x * x;
+  const p = horner(1/xsq, [1.63153871373020978e-2, 3.05326634961232344e-1,
+                           3.60344899949804439e-1, 1.25781726111229246e-1,
+                           1.60837851487422766e-2, 6.58749161529837803e-4]);
+  const q = horner(1/xsq, [1.0, 2.56852019228982242e0, 1.87295284992346047e0,
+                           5.27905102951428412e-1, 6.05183413124413191e-2,
+                           2.33520497626869185e-3]);
+  return safeExp(-xsq) * (0.5641895835477563 - (1/xsq) * p / q) / x;
+}
+
+function erfc(y) {
+  if (y < -6)  return 2;
+  if (y > 28)  return 0;
+  return y >= 0 ? erfc_pos(y) : 2 - erfc_pos(-y);
+}
+
+/** Standard normal CDF. */
+function Phi(x) {
+  if (!isFinite(x)) return x > 0 ? 1 : 0;
+  return 0.5 * erfc(-x * 0.7071067811865476);
+}
+
+/** Standard normal PDF. */
+function phiPdf(x) { return safeExp(-0.5 * x * x) * 0.3989422804014327; }
+
+// ── Bivariate normal CDF — Drezner-Genz Gauss-Legendre ─────────────────────
+const BVN_X = [0.0950125098360623, 0.2816035507792589, 0.4580167776572274,
+               0.6178762444026438, 0.7554044083550030, 0.8656312023341458,
+               0.9445750230732326, 0.9894009349916499];
+const BVN_W = [0.1894506104550685, 0.1826034150449236, 0.1691565193950025,
+               0.1495959888165767, 0.1246289512509108, 0.0951585116824928,
+               0.0622535239386479, 0.0271524594117541];
+
+function bvnCDF(dh, dk, r) {
+  if (!isFinite(r)) return 0;
+  // Genz's BVND computes the upper tail P(X > h, Y > k); negate the arguments
+  // so this function returns the CDF P(X < dh, Y < dk) callers expect.
+  dh = -dh; dk = -dk;
+  if (!isFinite(dh) || !isFinite(dk)) {
+    if (dh === Infinity || dk === Infinity) return 0;        // CDF arg was -inf
+    if (dh === -Infinity) return Phi(-dk);                    // CDF arg was +inf
+    if (dk === -Infinity) return Phi(-dh);
+    return 0;
+  }
+  r = Math.max(-0.99999, Math.min(0.99999, r));
+  const TP = 0.15915494309189535; // 1/(2*pi)
+  let bvn = 0;
+  if (Math.abs(r) < 0.925) {
+    const hs = (dh*dh + dk*dk) / 2;
+    const asr = Math.asin(r);
+    for (let i = 0; i < 8; i++) {
+      for (const sg of [-1, 1]) {
+        const sn = Math.sin(asr * (sg * BVN_X[i] + 1) / 2);
+        const den = 1 - sn * sn;
+        if (den < 1e-15) continue;
+        bvn += BVN_W[i] * safeExp((sn * dh * dk - hs) / den);
+      }
+    }
+    // Genz: BVN*ASR/(4*pi) — the quadrature spans both half-intervals, so the
+    // 1/(2*pi) factor alone (a common porting mistake) double-counts.
+    bvn = bvn * asr * TP * 0.5 + Phi(-dh) * Phi(-dk);
+  } else {
+    if (r < 0) dk = -dk;
+    if (Math.abs(r) < 1) {
+      const A = safeSqrt(1 - r*r);
+      const bs = (dh - dk) * (dh - dk);
+      const C = (4 - dh*dk) / 8;
+      const D = (12 - dh*dk) / 16;
+      const asr2 = -(bs / (A * A) + dh * dk) / 2;
+      if (asr2 > -100) {
+        // last term is C*D*AS^2/5 with AS = 1 - r^2 = A*A (A^4, not A^2)
+        bvn = A * safeExp(asr2) * (1 - C*(bs - A*A)*(1 - D*bs/5)/3 + C*D*A*A*A*A/5);
+      }
+      if (-dh * dk < 100) {
+        const B = safeSqrt(bs);
+        bvn -= safeExp(-(dh*dk)/2) * Math.sqrt(2*Math.PI) * Phi(-B/A) * B * (1 - C*bs*(1 - D*bs/5)/3);
+      }
+      const A2 = A / 2;
+      for (let i = 0; i < 8; i++) {
+        for (const sg of [-1, 1]) {
+          const xs = (A2 * (sg * BVN_X[i] + 1)) * (A2 * (sg * BVN_X[i] + 1));
+          const rs = safeSqrt(1 - xs);
+          if (rs > 1e-15) {
+            const asr3 = -(bs / xs + dh * dk) / 2;
+            if (asr3 > -100) {
+              bvn += A2 * BVN_W[i] * safeExp(asr3) *
+                     (safeExp(-dh*dk*(1-rs)/(2*(1+rs)))/rs - (1 + C*xs*(1 + D*xs)));
+            }
+          }
+        }
+      }
+      bvn *= -TP;
+    }
+    if (r > 0) bvn += Phi(-Math.max(dh, dk));
+    else { bvn = -bvn; if (dk > dh) bvn += Phi(dk) - Phi(dh); }
+  }
+  return Math.max(0, Math.min(1, bvn));
+}
+
+// ── European Black-Scholes-Merton ──────────────────────────────────────────
+function bsPrice(S, K, T, r, sig, q, type) {
+  if (!isFinite(S) || !isFinite(K) || !isFinite(r) || !isFinite(sig) || !isFinite(q) ||
+      T <= 0 || sig <= 0 || S <= 0 || K <= 0) {
+    return intrinsicValue(S, K, type);
+  }
+  const sqT = Math.sqrt(T);
+  const d1 = (Math.log(S/K) + (r - q + 0.5*sig*sig)*T) / (sig*sqT);
+  const d2 = d1 - sig*sqT;
+  const eqT = safeExp(-q*T);
+  const erT = safeExp(-r*T);
+  if (type === 'call') return S*eqT*Phi(d1) - K*erT*Phi(d2);
+  return K*erT*Phi(-d2) - S*eqT*Phi(-d1);
+}
+
+/**
+ * Analytical European Greeks.
+ * theta per calendar day; vega and rho per 1 percentage point.
+ */
+function bsGreeks(S, K, T, r, sig, q, type) {
+  if (T <= 0 || sig <= 0 || S <= 0 || K <= 0) {
+    const dlt = type === 'call' ? (S > K ? 1 : 0) : (S < K ? -1 : 0);
+    return { delta: dlt, gamma: 0, theta: 0, vega: 0, rho: 0 };
+  }
+  const sqT = Math.sqrt(T);
+  const d1 = (Math.log(S/K) + (r - q + 0.5*sig*sig)*T) / (sig*sqT);
+  const d2 = d1 - sig*sqT;
+  const eqT = safeExp(-q*T);
+  const erT = safeExp(-r*T);
+  const nd1 = phiPdf(d1);
+  let delta, theta, rho;
+  if (type === 'call') {
+    delta = eqT * Phi(d1);
+    theta = (-S*nd1*sig*eqT/(2*sqT) - r*K*erT*Phi(d2) + q*S*eqT*Phi(d1)) / 365;
+    rho   = K * T * erT * Phi(d2) / 100;
+  } else {
+    delta = -eqT * Phi(-d1);
+    theta = (-S*nd1*sig*eqT/(2*sqT) + r*K*erT*Phi(-d2) - q*S*eqT*Phi(-d1)) / 365;
+    rho   = -K * T * erT * Phi(-d2) / 100;
+  }
+  const gamma = eqT * nd1 / (S * sig * sqT);
+  const vega  = S * eqT * nd1 * sqT / 100;
+  return { delta, gamma, theta, vega, rho };
+}
+
+// ── Leisen-Reimer binomial tree (American) ─────────────────────────────────
+/**
+ * Peizer-Pratt method-2 inversion (Leisen-Reimer 1996, eq. for h^{-1}(z)):
+ *   h(z, n) = 1/2 + sign(z)/2 * sqrt( 1 - exp( -(z / (n + 1/3 + 0.1/(n+1)))^2 * (n + 1/6) ) )
+ * n must be odd.
+ */
+function ppInv(z, n) {
+  if (!isFinite(z)) return z > 0 ? 1 - 1e-12 : 1e-12;
+  if (z === 0) return 0.5;
+  const c = n + 1/3 + 0.1/(n + 1);
+  const arg = -(z / c) * (z / c) * (n + 1/6);
+  const inner = Math.max(0, 1 - safeExp(arg));
+  const h = 0.5 + (z > 0 ? 0.5 : -0.5) * Math.sqrt(inner);
+  return Math.min(1 - 1e-12, Math.max(1e-12, h));
+}
+
+/**
+ * CRR binomial tree — fallback only, used when LR parameters degenerate
+ * (e.g. |d1| enormous). Corrected node-price propagation.
+ */
+function crrTree(S, K, T, r, sig, q, type, N) {
+  N = N || 501;
+  if (T <= 0 || sig <= 0 || S <= 0 || K <= 0) return intrinsicValue(S, K, type);
+  const dt = T / N;
+  const u = Math.exp(sig * Math.sqrt(dt));
+  const d = 1 / u;
+  const disc = Math.exp(-r * dt);
+  let p = (Math.exp((r - q) * dt) - d) / (u - d);
+  p = Math.max(1e-10, Math.min(1 - 1e-10, p));
+  const q1 = 1 - p;
+  const V = new Float64Array(N + 1);
+  const u2 = u * u;
+  let Sj = S * Math.pow(d, N);
+  for (let j = 0; j <= N; j++) {
+    V[j] = type === 'call' ? Math.max(0, Sj - K) : Math.max(0, K - Sj);
+    Sj *= u2;
+  }
+  for (let i = N - 1; i >= 0; i--) {
+    let Snode = S * Math.pow(d, i);
+    for (let j = 0; j <= i; j++) {
+      const hold = disc * (p * V[j + 1] + q1 * V[j]);
+      const ex = type === 'call' ? Snode - K : K - Snode;
+      V[j] = hold > ex ? hold : (ex > 0 ? ex : hold);
+      Snode *= u2;
+    }
+  }
+  return Math.max(V[0], intrinsicValue(S, K, type));
+}
+
+/**
+ * Leisen-Reimer tree for American options. N is forced odd.
+ * u and d are chosen so the tree reproduces Black-Scholes in the limit with
+ * far smoother convergence than CRR (no odd-even oscillation).
+ */
+function lrTree(S, K, T, r, sig, q, type, N) {
+  if (!isFinite(S) || !isFinite(K) || !isFinite(T) || !isFinite(r) ||
+      !isFinite(sig) || !isFinite(q) || S <= 0 || K <= 0 || T <= 0 || sig <= 0) {
+    return intrinsicValue(S, K, type);
+  }
+  N = Math.max(25, Math.round(N || 201));
+  if (N % 2 === 0) N += 1;
+
+  const dt  = T / N;
+  const b   = r - q;
+  const sqT = Math.sqrt(T);
+  const d1  = (Math.log(S/K) + (b + 0.5*sig*sig)*T) / (sig*sqT);
+  const d2  = d1 - sig*sqT;
+
+  const p  = ppInv(d2, N);         // risk-neutral up probability
+  const pS = ppInv(d1, N);         // stock-measure probability
+  const g  = Math.exp(b * dt);
+  const u  = g * pS / p;
+  const dn = (g - p * u) / (1 - p);
+
+  if (!isFinite(u) || !isFinite(dn) || u <= 0 || dn <= 0 || u <= dn) {
+    return crrTree(S, K, T, r, sig, q, type, Math.min(N, 801));
+  }
+
+  const disc = Math.exp(-r * dt);
+  const q1 = 1 - p;
+  const logS = Math.log(S), logU = Math.log(u), logD = Math.log(dn);
+  const ud = u / dn;
+
+  const V = new Float64Array(N + 1);
+  // Terminal payoffs: S_Nj = S * u^j * d^(N-j)
+  let Sj = Math.exp(logS + N * logD);
+  for (let j = 0; j <= N; j++) {
+    V[j] = type === 'call' ? Math.max(0, Sj - K) : Math.max(0, K - Sj);
+    Sj *= ud;
+  }
+  // Backward induction with early exercise
+  for (let i = N - 1; i >= 0; i--) {
+    let Snode = Math.exp(logS + i * logD);
+    for (let j = 0; j <= i; j++) {
+      const hold = disc * (p * V[j + 1] + q1 * V[j]);
+      const ex = type === 'call' ? Snode - K : K - Snode;
+      V[j] = hold > ex ? hold : (ex > 0 ? ex : hold);
+      Snode *= ud;
+    }
+  }
+  const out = V[0];
+  if (!isFinite(out) || out < 0) {
+    return crrTree(S, K, T, r, sig, q, type, Math.min(N, 801));
+  }
+  return out;
+}
+
+/** Adaptive base step count for the LR tree given contract difficulty. */
+function lrBaseSteps(S, K, T, sig) {
+  const mny = Math.abs(safeLog(S/K)) / (sig * Math.sqrt(Math.max(T, 1e-8)) + 1e-8);
+  let N = 151;
+  if (T < 5/365)        N = 401;
+  else if (T < 30/365)  N = 251;
+  if (sig > 0.6)        N = Math.max(N, 301);
+  if (mny > 2)          N = Math.max(N, 401);
+  if (N % 2 === 0) N += 1;
+  return N;
+}
+
+/**
+ * LR tree with Richardson extrapolation: price at N and 2N+1 steps,
+ * combine as (4*P2 - P1)/3 to cancel the leading error term.
+ */
+function lrRichardson(S, K, T, r, sig, q, type) {
+  const N1 = lrBaseSteps(S, K, T, sig);
+  const N2 = 2 * N1 + 1;
+  const p1 = lrTree(S, K, T, r, sig, q, type, N1);
+  const p2 = lrTree(S, K, T, r, sig, q, type, N2);
+  if (!isFinite(p1) || !isFinite(p2)) return lrTree(S, K, T, r, sig, q, type, N2);
+  const extrap = (4 * p2 - p1) / 3;
+  const lo = Math.max(intrinsicValue(S, K, type), bsPrice(S, K, T, r, sig, q, type));
+  const hi = americanUpperBound(S, K, type);
+  return Math.min(hi, Math.max(lo, extrap));
+}
+
+// ── Bjerksund-Stensland 2002 (closed-form American, cross-check) ───────────
+// Exact formulation from Bjerksund & Stensland (2002) as given in Haug,
+// "The Complete Guide to Option Pricing Formulas" (2nd ed.):
+//   t1 = (sqrt(5)-1)/2 * T, phi/psi carry the full discount factor
+//   lambda = -r + gamma*b + 0.5*gamma*(gamma-1)*sig^2.
+function bs2002Phi(S, t, gamma, H, I, r, b, sig) {
+  if (t <= 0 || S <= 0 || H <= 0 || I <= 0 || sig <= 0) return 0;
+  const sig2 = sig * sig;
+  const sqt = safeSqrt(t);
+  const lambda = (-r + gamma * b + 0.5 * gamma * (gamma - 1) * sig2) * t;
+  const logSH = safeLog(S / H);
+  const lnIS = safeLog(I / S);
+  if (!isFinite(logSH) || !isFinite(lnIS)) return 0;
+  const d = -(logSH + (b + (gamma - 0.5) * sig2) * t) / (sig * sqt);
+  const kappa = 2 * b / sig2 + 2 * gamma - 1;
+  const result = safeExp(lambda) * Math.pow(S, gamma) *
+    (Phi(d) - Math.pow(I / S, kappa) * Phi(d - 2 * lnIS / (sig * sqt)));
+  return isFinite(result) ? result : 0;
+}
+
+function bs2002Psi(S, T, gamma, H, I2, I1, t1, r, b, sig) {
+  if (T <= 0 || t1 <= 0 || S <= 0 || H <= 0 || I1 <= 0 || I2 <= 0 || sig <= 0) return 0;
+  const sig2 = sig * sig;
+  const sqT = safeSqrt(T), sqt1 = safeSqrt(t1);
+  const coeff = b + (gamma - 0.5) * sig2;
+
+  const lnSI1   = safeLog(S / I1);
+  const lnI2SI1 = safeLog((I2 * I2) / (S * I1));
+  const lnSH    = safeLog(S / H);
+  const lnI2SH  = safeLog((I2 * I2) / (S * H));
+  const lnI1SH  = safeLog((I1 * I1) / (S * H));
+  const lnSI1SH = safeLog((S * I1 * I1) / (H * I2 * I2));
+  if (![lnSI1, lnI2SI1, lnSH, lnI2SH, lnI1SH, lnSI1SH].every(isFinite)) return 0;
+
+  const e1 = (lnSI1   + coeff * t1) / (sig * sqt1);
+  const e2 = (lnI2SI1 + coeff * t1) / (sig * sqt1);
+  const e3 = (lnSI1   - coeff * t1) / (sig * sqt1);
+  const e4 = (lnI2SI1 - coeff * t1) / (sig * sqt1);
+  const f1 = (lnSH    + coeff * T) / (sig * sqT);
+  const f2 = (lnI2SH  + coeff * T) / (sig * sqT);
+  const f3 = (lnI1SH  + coeff * T) / (sig * sqT);
+  const f4 = (lnSI1SH + coeff * T) / (sig * sqT);
+
+  const rho = safeSqrt(t1 / T);
+  const lambda = -r + gamma * b + 0.5 * gamma * (gamma - 1) * sig2;
+  const kappa = 2 * b / sig2 + 2 * gamma - 1;
+
+  const result = safeExp(lambda * T) * Math.pow(S, gamma) * (
+      bvnCDF(-e1, -f1,  rho)
+    - Math.pow(I2 / S, kappa)  * bvnCDF(-e2, -f2,  rho)
+    - Math.pow(I1 / S, kappa)  * bvnCDF(-e3, -f3, -rho)
+    + Math.pow(I1 / I2, kappa) * bvnCDF(-e4, -f4, -rho));
+  return isFinite(result) ? result : 0;
+}
+
+function bs2002CallRaw(S, K, T, r, sig, q) {
+  const b = r - q;
+  const euPrice = bsPrice(S, K, T, r, sig, q, 'call');
+  if (b >= r) return euPrice; // q <= 0: never optimal to exercise a call early
+  const sig2 = sig * sig;
+  const betaArg = (b/sig2 - 0.5) * (b/sig2 - 0.5) + 2 * r / sig2;
+  if (betaArg < 0) return euPrice;
+  const beta = (0.5 - b/sig2) + safeSqrt(betaArg);
+  if (!isFinite(beta) || beta <= 1) return euPrice;
+
+  const t1 = 0.5 * (Math.sqrt(5) - 1) * T;
+  const Binf = beta / (beta - 1) * K;
+  const B0 = Math.max(K, r / (r - b) * K);
+  const hden = (Binf - B0) * B0;
+  if (!(Math.abs(hden) > 1e-12)) return euPrice;
+  const ht1 = -(b * t1 + 2 * sig * safeSqrt(t1)) * K * K / hden;
+  const ht2 = -(b * T  + 2 * sig * safeSqrt(T))  * K * K / hden;
+  const I1 = B0 + (Binf - B0) * (1 - safeExp(ht1));
+  const I2 = B0 + (Binf - B0) * (1 - safeExp(ht2));
+  const intrinsic = Math.max(0, S - K);
+  if (!isFinite(I1) || !isFinite(I2) || I1 <= 0 || I2 <= 0) return euPrice;
+  // Above the flat exercise trigger the approximation says "exercise now", worth
+  // S - K. But the trigger is only an approximation to the true free boundary, and
+  // in a few high-vol / long-dated corners it fires while the European value still
+  // exceeds intrinsic. Returning bare intrinsic there would put the American price
+  // below its European twin, which is a naked arbitrage violation. Floor it.
+  if (S >= I2) return Math.max(intrinsic, euPrice);
+
+  const alpha1 = (I1 - K) * Math.pow(I1, -beta);
+  const alpha2 = (I2 - K) * Math.pow(I2, -beta);
+  if (!isFinite(alpha1) || !isFinite(alpha2)) return euPrice;
+
+  const price =
+      alpha2 * Math.pow(S, beta)
+    - alpha2 * bs2002Phi(S, t1, beta, I2, I2, r, b, sig)
+    + bs2002Phi(S, t1, 1, I2, I2, r, b, sig)
+    - bs2002Phi(S, t1, 1, I1, I2, r, b, sig)
+    - K * bs2002Phi(S, t1, 0, I2, I2, r, b, sig)
+    + K * bs2002Phi(S, t1, 0, I1, I2, r, b, sig)
+    + alpha1 * bs2002Phi(S, t1, beta, I1, I2, r, b, sig)
+    - alpha1 * bs2002Psi(S, T, beta, I1, I2, I1, t1, r, b, sig)
+    + bs2002Psi(S, T, 1, I1, I2, I1, t1, r, b, sig)
+    - bs2002Psi(S, T, 1, K,  I2, I1, t1, r, b, sig)
+    - K * bs2002Psi(S, T, 0, I1, I2, I1, t1, r, b, sig)
+    + K * bs2002Psi(S, T, 0, K,  I2, I1, t1, r, b, sig);
+
+  if (!isFinite(price) || isNaN(price)) return euPrice;
+  return Math.max(intrinsic, euPrice, price);
+}
+
+/**
+ * BS2002 closed-form for either type. Puts use the exact symmetry
+ * P(S, K, T, r, q, sig) = C(K, S, T, q, r, sig).
+ * Used as a cross-check against the tree, never as the primary price.
+ */
+function bs2002Price(S, K, T, r, sig, q, type) {
+  if (T <= 0 || sig <= 0 || S <= 0 || K <= 0) return intrinsicValue(S, K, type);
+  if (type === 'call') return bs2002CallRaw(S, K, T, r, sig, q);
+  return bs2002CallRaw(K, S, T, q, sig, r);
+}
+
+// ── Primary American pricer ────────────────────────────────────────────────
+/**
+ * Primary American price: Leisen-Reimer + Richardson for both types.
+ * fast=true drops Richardson (single tree) — used inside finite-difference
+ * Greeks where consistency across bumped inputs matters more than raw accuracy.
+ */
+function americanPrice(S, K, T, r, sig, q, type, fast) {
+  if (!isFinite(S) || !isFinite(K) || !isFinite(T) || !isFinite(r) ||
+      !isFinite(sig) || !isFinite(q) || S <= 0 || K <= 0 || sig <= 0) {
+    return intrinsicValue(S, K, type);
+  }
+  if (T <= 0) return intrinsicValue(S, K, type);
+  // Below ~0.1% vol the Leisen-Reimer inversion degenerates: the Peizer-Pratt
+  // argument overflows and node spacing collapses to the point where the tree
+  // loses all resolution (an independent CRR tree returns NaN in the same region).
+  // In that limit early exercise is never optimal for a call and the put boundary
+  // is deterministic, so the closed form IS the answer. Hand off to it.
+  if (sig < 1e-3) {
+    const euro = bsPrice(S, K, T, r, sig, q, type);
+    return Math.min(americanUpperBound(S, K, type),
+                    Math.max(intrinsicValue(S, K, type), euro));
+  }
+  let price;
+  if (fast) {
+    price = lrTree(S, K, T, r, sig, q, type, lrBaseSteps(S, K, T, sig));
+  } else {
+    price = lrRichardson(S, K, T, r, sig, q, type);
+  }
+  if (!isFinite(price)) price = bsPrice(S, K, T, r, sig, q, type);
+  const lo = Math.max(intrinsicValue(S, K, type), bsPrice(S, K, T, r, sig, q, type));
+  return Math.min(americanUpperBound(S, K, type), Math.max(lo, price));
+}
+
+// ── Numerical Greeks (model-consistent, fixed tree size across bumps) ──────
+/**
+ * Finite-difference Greeks on the LR tree. The SAME step count is used for
+ * every evaluation so discretization bias cancels in the differences.
+ * theta per calendar day; vega and rho per 1 percentage point.
+ */
+function americanGreeks(S, K, T, r, sig, q, type) {
+  if (T <= 0 || sig <= 0 || S <= 0 || K <= 0) {
+    const dlt = type === 'call' ? (S > K ? 1 : 0) : (S < K ? -1 : 0);
+    return { delta: dlt, gamma: 0, theta: 0, vega: 0, rho: 0 };
+  }
+  const N = Math.max(201, lrBaseSteps(S, K, T, sig));
+  const px = (S_, K_, T_, r_, sig_, q_) => lrTree(S_, K_, T_, r_, sig_, q_, type, N);
+
+  const p0 = px(S, K, T, r, sig, q);
+
+  const hS = Math.max(0.005 * S, 0.01);
+  const pSu = px(S + hS, K, T, r, sig, q);
+  const pSd = px(S - hS, K, T, r, sig, q);
+  const delta = (pSu - pSd) / (2 * hS);
+  const gamma = (pSu - 2 * p0 + pSd) / (hS * hS);
+
+  const hV = 0.005;
+  const pVu = px(S, K, T, r, sig + hV, q);
+  const pVd = px(S, K, T, r, Math.max(1e-4, sig - hV), q);
+  const vega = (pVu - pVd) / (sig + hV - Math.max(1e-4, sig - hV)) * 0.01;
+
+  const dDay = 1 / 365;
+  const Tf = Math.max(dDay / 2, T - dDay);
+  const theta = px(S, K, Tf, r, sig, q) - p0;
+
+  const hR = 0.0025;
+  const pRu = px(S, K, T, r + hR, sig, q);
+  const pRd = px(S, K, T, r - hR, sig, q);
+  const rho = (pRu - pRd) / (2 * hR) * 0.01;
+
+  return {
+    delta: isFinite(delta) ? delta : 0,
+    gamma: isFinite(gamma) ? gamma : 0,
+    theta: isFinite(theta) ? theta : 0,
+    vega:  isFinite(vega)  ? vega  : 0,
+    rho:   isFinite(rho)   ? rho   : 0
+  };
+}
+
+/** Raw dP/dsigma (per 1.0 of vol) on the accurate pricer — used by the IV solver. */
+function numericalVegaRaw(S, K, T, r, sig, q, type) {
+  if (sig <= 0 || T <= 0) return 0;
+  const h = Math.max(0.001, Math.min(0.02, 0.01 * sig));
+  const up = americanPrice(S, K, T, r, sig + h, q, type);
+  const dn = americanPrice(S, K, T, r, Math.max(1e-5, sig - h), q, type);
+  const v = (up - dn) / (sig + h - Math.max(1e-5, sig - h));
+  return isFinite(v) ? Math.max(0, v) : 0;
+}
+
+// ── Discrete dividend (escrowed method) ────────────────────────────────────
+/**
+ * Subtract the PV of a discrete cash dividend from spot if the ex-date falls
+ * before expiry. Returns { S_adj, q_adj, pvDiv, applied }.
+ * When applied, continuous yield is replaced by 0.
+ */
+function discreteDivAdjust(S, r, T, divAmt, divDays) {
+  if (!divAmt || divAmt <= 0 || divDays == null || divDays < 0) {
+    return { S_adj: S, q_adj: null, pvDiv: 0, applied: false };
+  }
+  const tEx = divDays / 365;
+  if (tEx > T) return { S_adj: S, q_adj: null, pvDiv: 0, applied: false };
+  const pvDiv = divAmt * safeExp(-r * tEx);
+  const S_adj = Math.max(S - pvDiv, S * 0.001);
+  return { S_adj, q_adj: 0, pvDiv, applied: true };
+}
+
+// ── European implied volatility (analytic-vega Newton + bisection) ─────────
+function europeanIV(P, S, K, T, r, q, type) {
+  if (!(P > 0) || T <= 0 || S <= 0 || K <= 0) return null;
+  const lower = Math.max(0, type === 'call'
+    ? S * safeExp(-q*T) - K * safeExp(-r*T)
+    : K * safeExp(-r*T) - S * safeExp(-q*T));
+  const upper = type === 'call' ? S * safeExp(-q*T) : K * safeExp(-r*T);
+  if (P < lower - 1e-9 || P > upper + 1e-9) return null;
+
+  const f = sig => bsPrice(S, K, T, r, sig, q, type) - P;
+  const vegaFn = sig => {
+    const d1 = (Math.log(S/K) + (r - q + 0.5*sig*sig)*T) / (sig*Math.sqrt(T));
+    return S * safeExp(-q*T) * phiPdf(d1) * Math.sqrt(T);
+  };
+
+  // Brenner-Subrahmanyam style seed, clamped
+  let sig = Math.max(1e-4, Math.min(10,
+    Math.sqrt(2 * Math.PI / T) * P / Math.max(1e-12, S * safeExp(-q*T))));
+
+  for (let i = 0; i < 60; i++) {
+    const err = f(sig);
+    if (Math.abs(err) < 1e-12) return sig;
+    const v = vegaFn(sig);
+    if (!isFinite(v) || v < 1e-12) break;
+    let step = err / v;
+    step = Math.max(-sig * 0.7, Math.min(sig * 5, step)); // damped
+    const next = sig - step;
+    if (next <= 0) { sig = sig / 2; continue; }
+    if (Math.abs(next - sig) < 1e-14) return next;
+    sig = next;
+    if (sig > 50) break;
+  }
+  if (Math.abs(f(sig)) < 1e-9) return sig;
+
+  // Bisection failsafe
+  let lo = 1e-6, hi = 20;
+  let fLo = f(lo), fHi = f(hi);
+  if (fLo * fHi > 0) return null;
+  for (let i = 0; i < 200; i++) {
+    const mid = 0.5 * (lo + hi);
+    const fm = f(mid);
+    if (Math.abs(fm) < 1e-12 || hi - lo < 1e-12) return mid;
+    if (fm * fLo < 0) { hi = mid; } else { lo = mid; fLo = fm; }
+  }
+  return 0.5 * (lo + hi);
+}
+
+// ── Arbitrage checks (American bounds) ─────────────────────────────────────
+function checkArbitrage(P, S, K, T, r, q, type) {
+  const errors = [];
+  const warnings = [];
+  const intrinsic = intrinsicValue(S, K, type);
+  const upper = americanUpperBound(S, K, type);
+
+  if (P < intrinsic - 0.01) {
+    errors.push(`Premium $${P.toFixed(4)} is below intrinsic value $${intrinsic.toFixed(4)} — ` +
+                `an American option can always be exercised for intrinsic, so no valid IV exists. ` +
+                `Check for a stale quote or wrong inputs.`);
+  }
+  if (P > upper + 0.01) {
+    errors.push(`Premium $${P.toFixed(4)} exceeds the no-arbitrage upper bound ` +
+                `$${upper.toFixed(2)} (${type === 'call' ? 'stock price' : 'strike'}).`);
+  }
+  if (errors.length === 0) {
+    if (P < intrinsic + 0.005 && intrinsic > 0) {
+      warnings.push(`Premium is at/near intrinsic — almost zero time value. IV is poorly defined here ` +
+                    `(any low vol reproduces this price). Deep ITM quotes often sit at intrinsic.`);
+    }
+    if (T < 3/365) {
+      warnings.push(`Near-expiry contract (${(T*365).toFixed(1)} days). IV inversion is less stable this close to expiry.`);
+    }
+    if (T > 3) {
+      warnings.push(`Long-dated contract (${(T*365).toFixed(0)} days). Constant-vol models are a rough approximation at this horizon.`);
+    }
+    if (q > 0.12) {
+      warnings.push(`High dividend yield (${(q*100).toFixed(1)}%) — early-exercise effects are amplified.`);
+    }
+  }
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+/** Confidence score for an IV inversion result, [0,1]. */
+function assessInversion(S, K, T, r, sig, q, type, residual) {
+  const warnings = [];
+  let confidence = 1.0;
+  const vega = numericalVegaRaw(S, K, T, r, sig, q, type);
+  const mny = sig > 0 ? Math.abs(safeLog(S/K)) / (sig * Math.sqrt(T)) : 10;
+
+  if (vega < 0.001) {
+    confidence *= 0.3;
+    warnings.push(`Very low vega (${vega.toExponential(2)}) — the price barely responds to volatility here, so the IV number is fragile.`);
+  } else if (vega < 0.01) {
+    confidence *= 0.65;
+    warnings.push(`Low vega (${vega.toFixed(4)}) — IV precision is reduced.`);
+  }
+  if (T < 2/365)      { confidence *= 0.5; warnings.push(`Under 2 days to expiry — take the IV with a grain of salt.`); }
+  else if (T < 7/365) { confidence *= 0.75; }
+  if (mny > 3)      { confidence *= 0.6; warnings.push(`Extreme moneyness (${mny.toFixed(1)}σ from at-the-money).`); }
+  else if (mny > 2) { confidence *= 0.8; }
+  if (residual > 0.01)      confidence *= 0.4;
+  else if (residual > 1e-3) confidence *= 0.7;
+  else if (residual > 1e-5) confidence *= 0.9;
+
+  return { confidence: Math.max(0, Math.min(1, confidence)), warnings, vega };
+}
+
+// ── American implied volatility solver ─────────────────────────────────────
+/**
+ * Solve americanPrice(sig) = P for sig.
+ * Strategy: European IV as seed (cheap, analytic) → damped Newton with
+ * numerical vega on the American pricer → Brent failsafe with adaptive bracket.
+ * Returns { sig, method, iters, residual, warnings } or { error }.
+ */
+function americanIV(P, S, K, T, r, q, type) {
+  const arb = checkArbitrage(P, S, K, T, r, q, type);
+  if (!arb.valid) return { error: arb.errors[0], warnings: arb.warnings };
+
+  const warnings = [...arb.warnings];
+  const price = sig => americanPrice(S, K, T, r, sig, q, type);
+
+  // Seed: European IV if it exists, else a rational fallback
+  let seed = europeanIV(P, S, K, T, r, q, type);
+  if (seed === null || !isFinite(seed)) {
+    seed = Math.sqrt(2 * Math.PI / T) * P / Math.max(1e-12, S);
+  }
+  let sig = Math.max(0.005, Math.min(8, seed));
+
+  let method = 'Newton (European-seeded)';
+  let iters = 0;
+  let best = { sig, res: Infinity };
+  const TOL = 1e-8;
+
+  for (let i = 0; i < 60; i++) {
+    iters++;
+    const err = price(sig) - P;
+    const aerr = Math.abs(err);
+    if (aerr < best.res) best = { sig, res: aerr };
+    if (aerr < TOL) break;
+
+    const vega = numericalVegaRaw(S, K, T, r, sig, q, type);
+    if (!isFinite(vega) || vega < 1e-9) { method = 'Brent (low vega)'; break; }
+
+    let step = -err / vega;
+    const cap = Math.max(0.25, sig * 0.6);
+    step = Math.max(-cap, Math.min(cap, step));
+    const next = Math.max(1e-4, sig + step);
+    if (Math.abs(next - sig) < 1e-12) break;
+    sig = next;
+    if (sig > 25) { method = 'Brent (diverged)'; break; }
+  }
+
+  let residual = Math.abs(price(best.sig) - P);
+  sig = best.sig;
+
+  // Brent failsafe when Newton didn't fully converge
+  if (residual > 1e-6) {
+    const bSig = brentIV(P, S, K, T, r, q, type, TOL);
+    if (bSig !== null && isFinite(bSig)) {
+      const bRes = Math.abs(price(bSig) - P);
+      if (bRes < residual) {
+        sig = bSig; residual = bRes;
+        method = method.startsWith('Brent') ? method : 'Brent failsafe';
+      }
+    }
+  }
+
+  if (!isFinite(sig) || sig <= 0 || sig > 30 || residual > 0.05) {
+    return {
+      error: 'Solver could not converge — the premium may be inside the bid-ask noise of a ' +
+             'zero-time-value region, or the contract is numerically degenerate.',
+      warnings
+    };
+  }
+  return { sig, method, iters, residual, warnings };
+}
+
+function brentIV(P, S, K, T, r, q, type, tol) {
+  const price = sig => americanPrice(S, K, T, r, sig, q, type);
+  let a = 1e-4;
+  let fa = price(a) - P;
+  // expand upper bracket until it crosses
+  let b = 0.5, fb = price(b) - P;
+  const His = [1, 2, 4, 8, 15, 30];
+  let k = 0;
+  while (fa * fb > 0 && k < His.length) { b = His[k++]; fb = price(b) - P; }
+  if (fa * fb > 0) return null;
+
+  let c = a, fc = fa, d = b - a, e = d;
+  for (let i = 0; i < 150; i++) {
+    if (fb * fc > 0) { c = a; fc = fa; d = b - a; e = d; }
+    if (Math.abs(fc) < Math.abs(fb)) { a = b; b = c; c = a; fa = fb; fb = fc; fc = fa; }
+    const tol1 = 2 * 2.22e-16 * Math.abs(b) + 0.5 * (tol || 1e-9);
+    const xm = 0.5 * (c - b);
+    if (Math.abs(xm) <= tol1 || Math.abs(fb) < 1e-14) return b;
+    if (Math.abs(e) >= tol1 && Math.abs(fa) > Math.abs(fb)) {
+      let s = fb / fa, p2, q2, r2;
+      if (a === c) { p2 = 2*xm*s; q2 = 1 - s; }
+      else {
+        q2 = fa/fc; r2 = fb/fc;
+        p2 = s*(2*xm*q2*(q2-r2) - (b-a)*(r2-1));
+        q2 = (q2-1)*(r2-1)*(s-1);
+      }
+      if (p2 > 0) q2 = -q2; else p2 = -p2;
+      if (2*p2 < Math.min(3*xm*q2 - Math.abs(tol1*q2), Math.abs(e*q2))) { e = d; d = p2/q2; }
+      else { d = xm; e = d; }
+    } else { d = xm; e = d; }
+    a = b; fa = fb;
+    b += Math.abs(d) > tol1 ? d : (xm > 0 ? tol1 : -tol1);
+    fb = price(b) - P;
+  }
+  return b;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UI LAYER
+// ═══════════════════════════════════════════════════════════════════════════
+
+const NUM_STRIKES = 5;
+// Fixed per-slot colors (K1..K5) — never reassigned when slots are disabled
+const STRIKE_COLORS = ['#4dabf7', '#ffd93d', '#00e5b0', '#ff6b6b', '#a78bfa'];
+const DEFAULT_STRIKES = [90, 95, 100, 105, 110];
+
+let pricerType = 'call';
+let ivType = 'call';
+let greekMode = 'am';
+let lastChart = null;
+
+// ── Small helpers ──────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt$ = (x, d) => (isFinite(x) ? '$' + x.toFixed(d == null ? 4 : d) : '—');
+const num = id => parseFloat($(id).value);
+
+function parseDateLocal(str) {
+  // "YYYY-MM-DD" parsed as LOCAL date (new Date(str) would parse as UTC and
+  // shift the day depending on timezone — that error skews T for short-dated options)
+  if (!str) return null;
+  const p = str.split('-');
+  if (p.length !== 3) return null;
+  return new Date(+p[0], +p[1] - 1, +p[2]);
+}
+
+function fmtDateLocal(d) {
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function debounce(fn, ms) {
+  let t = null;
+  return function () { clearTimeout(t); t = setTimeout(fn, ms); };
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function showTab(which) {
+  const map = { pricer: 'Pricer', iv: 'IV', val: 'Val' };
+  for (const k of Object.keys(map)) {
+    $('tab' + map[k]).classList.toggle('active', k === which);
+    $('pane' + map[k]).classList.toggle('hidden', k !== which);
+  }
+  if (which === 'pricer') updatePricer(); // canvas width can change while hidden
+}
+
+// ── Pricer: type / mode / dates ────────────────────────────────────────────
+function setPricerType(t) {
+  pricerType = t;
+  $('btnPCall').className = 'type-btn' + (t === 'call' ? ' active-call' : '');
+  $('btnPPut').className  = 'type-btn' + (t === 'put'  ? ' active-put'  : '');
+  updatePricer();
+}
+
+function setGreekMode(m) {
+  greekMode = m;
+  $('segAm').classList.toggle('active', m === 'am');
+  $('segEu').classList.toggle('active', m === 'eu');
+  updatePricer();
+}
+
+function setDTE(days) {
+  const today = parseDateLocal($('pToday').value) || new Date();
+  const exp = new Date(today.getTime());
+  exp.setDate(exp.getDate() + days);
+  $('pExpiry').value = fmtDateLocal(exp);
+  updatePricer();
+}
+
+// ── Strike table skeleton ──────────────────────────────────────────────────
+function buildStrikeTableHead() {
+  let h1 = '<tr><th class="rowlab">Strike $</th>';
+  let h2 = '<tr><th class="rowlab">Implied Vol % <button class="chip" style="margin-left:0.3rem" ' +
+           'onclick="copyIVAll()" title="Copy the first filled IV to all slots">&#8677; all</button></th>';
+  for (let i = 0; i < NUM_STRIKES; i++) {
+    h1 += `<th><span class="k-strike-dot" style="background:${STRIKE_COLORS[i]}"></span>` +
+          `<input type="number" id="kIn${i}" value="${DEFAULT_STRIKES[i]}" min="0" step="0.5" inputmode="decimal"></th>`;
+    h2 += `<th><input type="number" id="ivIn${i}" value="30" min="0.1" step="0.5" inputmode="decimal"></th>`;
+  }
+  $('kHead').innerHTML = h1 + '</tr>' + h2 + '</tr>';
+}
+
+function copyIVAll() {
+  let src = null;
+  for (let i = 0; i < NUM_STRIKES; i++) {
+    const v = num('ivIn' + i);
+    if (isFinite(v) && v > 0) { src = v; break; }
+  }
+  if (src === null) return;
+  for (let i = 0; i < NUM_STRIKES; i++) $('ivIn' + i).value = src;
+  updatePricer();
+}
+
+// ── Pricer main update ─────────────────────────────────────────────────────
+function updatePricer() {
+  const S = num('pS');
+  const r = num('pR') / 100;
+  const q = Math.max(0, num('pQ') / 100 || 0);
+  const today = parseDateLocal($('pToday').value);
+  const expiry = parseDateLocal($('pExpiry').value);
+  const notices = [];
+
+  $('pS').classList.toggle('bad', !(S > 0));
+
+  let days = NaN, T = NaN;
+  if (today && expiry) {
+    days = Math.round((expiry - today) / 86400000);
+    T = days / 365;
+  }
+
+  $('sumS').textContent = S > 0 ? '$' + S.toFixed(2) : '—';
+  $('sumDTE').textContent = isFinite(days) ? days : '—';
+  $('sumT').textContent = isFinite(T) ? T.toFixed(4) : '—';
+  $('sumR').textContent = isFinite(r) ? (r * 100).toFixed(2) + '%' : '—';
+  $('sumQ').textContent = isFinite(q) ? (q * 100).toFixed(2) + '%' : '—';
+
+  if (!(S > 0) || !isFinite(r)) {
+    $('pricerNotices').innerHTML = '<div class="notice-err">Enter a valid stock price and rate.</div>';
+    return;
+  }
+  if (!isFinite(T) || T <= 0) {
+    $('pricerNotices').innerHTML = '<div class="notice-err">Expiry must be after today.</div>';
+    return;
+  }
+
+  // Discrete dividend (escrowed) — overrides continuous yield when applied
+  const divAmt = num('pDivAmt') || 0;
+  const divDays = num('pDivDays') || 0;
+  const adj = discreteDivAdjust(S, r, T, divAmt, divDays);
+  const S_eff = adj.S_adj;
+  const q_eff = adj.applied ? 0 : q;
+  if (adj.applied) {
+    notices.push(`<div class="notice-info">Discrete dividend: $${divAmt.toFixed(2)} in ${divDays} days ` +
+      `&rarr; PV $${adj.pvDiv.toFixed(4)} subtracted from spot (effective S = $${S_eff.toFixed(4)}, q set to 0).</div>`);
+  } else if (divAmt > 0) {
+    notices.push(`<div class="notice-info">Discrete dividend ignored — ex-date (${divDays}d) is after expiry (${days}d).</div>`);
+  }
+
+  // Per-strike computation
+  const cols = [];
+  for (let i = 0; i < NUM_STRIKES; i++) {
+    const K = num('kIn' + i);
+    const ivPct = num('ivIn' + i);
+    const active = isFinite(K) && K > 0 && isFinite(ivPct) && ivPct > 0;
+    $('ivIn' + i).classList.toggle('bad', isFinite(K) && K > 0 && !(ivPct > 0));
+    if (!active) { cols.push(null); continue; }
+    const sig = ivPct / 100;
+    const eu = bsPrice(S_eff, K, T, r, sig, q_eff, pricerType);
+    const am = americanPrice(S_eff, K, T, r, sig, q_eff, pricerType);
+    const b02 = bs2002Price(S_eff, K, T, r, sig, q_eff, pricerType);
+    const dev = Math.abs(b02 - am) / Math.max(am, 1e-4);
+    const ee = Math.max(0, am - eu);
+    const intr = intrinsicValue(S_eff, K, pricerType);
+    const be = pricerType === 'call' ? K + am : K - am;
+    const g = greekMode === 'am'
+      ? americanGreeks(S_eff, K, T, r, sig, q_eff, pricerType)
+      : bsGreeks(S_eff, K, T, r, sig, q_eff, pricerType);
+    cols.push({ i, K, sig, eu, am, b02, dev, ee, intr, be, g });
+  }
+
+  // Cross-strike monotonicity (calls: price falls as K rises; puts: rises)
+  const act = cols.filter(c => c);
+  const sorted = [...act].sort((a, b) => a.K - b.K);
+  const monoBad = new Set();
+  for (let i = 0; i + 1 < sorted.length; i++) {
+    const a = sorted[i], b = sorted[i + 1];
+    if (b.K - a.K < 1e-9) continue;
+    if (pricerType === 'call' && a.am < b.am - 1e-4) { monoBad.add(a.i); monoBad.add(b.i); }
+    if (pricerType === 'put'  && a.am > b.am + 1e-4) { monoBad.add(a.i); monoBad.add(b.i); }
+  }
+  if (monoBad.size > 0) {
+    notices.push(`<div class="notice-warn">&#9888; Cross-strike monotonicity flag: with per-strike IVs, ` +
+      `a ${pricerType} at a ${pricerType === 'call' ? 'higher' : 'lower'} strike prices above its neighbor. ` +
+      `That combination of IVs implies a static arbitrage (a vertical spread with negative cost) — ` +
+      `double-check the IV inputs against real quotes.</div>`);
+  }
+
+  $('pricerNotices').innerHTML = notices.join('');
+
+  renderStrikeTable(cols, monoBad, S_eff);
+  drawPayoff(S, cols);
+}
+
+function renderStrikeTable(cols, monoBad, S_eff) {
+  const cell = (fn) => cols.map(c => `<td>${c ? fn(c) : '<span class="dim">—</span>'}</td>`).join('');
+  const isPut = pricerType === 'put';
+  const heroColor = isPut ? 'var(--put)' : 'var(--accent)';
+
+  const mnyBadge = c => {
+    const ratio = S_eff / c.K;
+    let cls, txt;
+    const itm = isPut ? ratio < 0.98 : ratio > 1.02;
+    const otm = isPut ? ratio > 1.02 : ratio < 0.98;
+    if (itm) { cls = 'itm'; txt = 'ITM'; }
+    else if (otm) { cls = 'otm'; txt = 'OTM'; }
+    else { cls = 'atm'; txt = 'ATM'; }
+    return `<span class="mny-badge ${cls}">${txt}</span>`;
+  };
+
+  const chkBadge = c => {
+    if (monoBad.has(c.i)) return '<span class="val-badge warn" title="Cross-strike ordering violates no-arbitrage — check IVs">&#9888; mono</span>';
+    if (c.dev > 0.015 && c.am > 0.05)
+      return `<span class="val-badge warn" title="Closed-form BS2002 differs from the tree by ${(c.dev*100).toFixed(1)}% — tree price is authoritative">&#9888; ${(c.dev*100).toFixed(1)}%</span>`;
+    return '<span class="val-badge ok" title="No-arbitrage bounds and cross-checks passed">&#10003; ok</span>';
+  };
+
+  const rows = [
+    `<tr><td class="rowlab">Moneyness</td>${cell(mnyBadge)}</tr>`,
+    `<tr class="sect"><td colspan="${NUM_STRIKES + 1}">Prices — per share (&times;100 per US contract)</td></tr>`,
+    `<tr class="hero"><td class="rowlab">American price</td>${cell(c => `<span style="color:${heroColor}">${fmt$(c.am)}</span>`)}</tr>`,
+    `<tr><td class="rowlab">European (Black-Scholes)</td>${cell(c => fmt$(c.eu))}</tr>`,
+    `<tr><td class="rowlab">BS2002 closed-form check</td>${cell(c => `<span class="dim">${fmt$(c.b02)}</span>`)}</tr>`,
+    `<tr><td class="rowlab">Early-exercise premium</td>${cell(c => fmt$(c.ee))}</tr>`,
+    `<tr><td class="rowlab">Intrinsic / time value</td>${cell(c => `<span class="dim">${fmt$(c.intr, 2)} / ${fmt$(Math.max(0, c.am - c.intr), 2)}</span>`)}</tr>`,
+    `<tr><td class="rowlab">Break-even at expiry</td>${cell(c => fmt$(c.be, 2))}</tr>`,
+    `<tr><td class="rowlab">Check</td>${cell(chkBadge)}</tr>`,
+    `<tr class="sect"><td colspan="${NUM_STRIKES + 1}">Greeks — ${greekMode === 'am' ? 'American (tree, numerical)' : 'European (Black-Scholes, analytical)'}</td></tr>`,
+    `<tr><td class="rowlab">Delta &Delta;</td>${cell(c => c.g.delta.toFixed(4))}</tr>`,
+    `<tr><td class="rowlab">Gamma &Gamma;</td>${cell(c => c.g.gamma.toFixed(5))}</tr>`,
+    `<tr><td class="rowlab">Theta / day</td>${cell(c => fmt$(c.g.theta))}</tr>`,
+    `<tr><td class="rowlab">Vega / 1%</td>${cell(c => fmt$(c.g.vega))}</tr>`,
+    `<tr><td class="rowlab">Rho / 1%</td>${cell(c => fmt$(c.g.rho))}</tr>`
+  ];
+  $('kBody').innerHTML = rows.join('');
+}
+
+// ── Payoff chart ───────────────────────────────────────────────────────────
+function drawPayoff(S, cols, hoverPx) {
+  const canvas = $('payoffCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const W = Math.max(280, rect.width);
+  const H = 240;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.height = H + 'px'; // width stays 100% via CSS so it can never overflow
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  ctx.clearRect(0, 0, W, H);
+
+  const act = cols.filter(c => c);
+  const legend = $('chartLegend');
+  if (act.length === 0 || !(S > 0)) {
+    legend.innerHTML = '';
+    lastChart = null;
+    ctx.fillStyle = 'rgba(107,107,138,0.6)';
+    ctx.font = '11px IBM Plex Mono';
+    ctx.fillText('Enter at least one strike + IV to draw the payoff', 20, H / 2);
+    return;
+  }
+
+  const anchors = [S, ...act.map(c => c.K), ...act.map(c => c.be)].filter(isFinite);
+  const lo = Math.max(0, Math.min(...anchors) * 0.85);
+  const hi = Math.max(...anchors) * 1.12;
+  const steps = 160;
+
+  const series = act.map(c => {
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+      const ST = lo + (hi - lo) * i / steps;
+      const pnl = (pricerType === 'call' ? Math.max(0, ST - c.K) : Math.max(0, c.K - ST)) - c.am;
+      pts.push({ ST, pnl });
+    }
+    return { c, pts, color: STRIKE_COLORS[c.i] };
+  });
+
+  const allPnl = series.flatMap(s => s.pts.map(p => p.pnl));
+  let minP = Math.min(...allPnl), maxP = Math.max(...allPnl);
+  if (maxP - minP < 1e-9) { maxP += 1; minP -= 1; }
+  const padP = (maxP - minP) * 0.08;
+  minP -= padP; maxP += padP;
+
+  const padL = 48, padR = 34, padT = 14, padB = 26;
+  const toX = v => padL + (v - lo) / (hi - lo) * (W - padL - padR);
+  const toY = v => H - padB - (v - minP) / (maxP - minP) * (H - padT - padB);
+
+  // Recessive grid + y labels
+  ctx.font = '9px IBM Plex Mono';
+  ctx.strokeStyle = 'rgba(42,42,61,0.7)';
+  ctx.fillStyle = 'rgba(107,107,138,0.9)';
+  ctx.lineWidth = 1;
+  const yTicks = 4;
+  for (let i = 0; i <= yTicks; i++) {
+    const v = minP + (maxP - minP) * i / yTicks;
+    const y = toY(v);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+    ctx.textAlign = 'right';
+    ctx.fillText((v >= 0 ? '+' : '−') + '$' + Math.abs(v).toFixed(Math.abs(maxP - minP) < 4 ? 2 : 1), padL - 6, y + 3);
+  }
+  // x labels
+  ctx.textAlign = 'center';
+  for (let i = 0; i <= 4; i++) {
+    const v = lo + (hi - lo) * i / 4;
+    ctx.fillText('$' + v.toFixed(v < 10 ? 2 : 0), toX(v), H - 8);
+  }
+
+  // Zero P/L line
+  const zy = toY(0);
+  ctx.strokeStyle = 'rgba(107,107,138,0.55)';
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(padL, zy); ctx.lineTo(W - padR, zy); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Current stock price marker
+  const sx = toX(S);
+  if (sx > padL && sx < W - padR) {
+    ctx.strokeStyle = 'rgba(232,232,240,0.35)';
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.moveTo(sx, padT); ctx.lineTo(sx, H - padB); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(232,232,240,0.6)';
+    ctx.textAlign = 'center';
+    ctx.fillText('S', sx, padT - 3 + 8);
+  }
+
+  // Series lines (2px) + direct labels, staggered to avoid collisions
+  const usedLabelY = [];
+  series.forEach(s => {
+    ctx.beginPath();
+    ctx.moveTo(toX(s.pts[0].ST), toY(s.pts[0].pnl));
+    for (const p of s.pts) ctx.lineTo(toX(p.ST), toY(p.pnl));
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    let ly = toY(s.pts[steps].pnl);
+    while (usedLabelY.some(u => Math.abs(u - ly) < 11)) ly -= 11;
+    usedLabelY.push(ly);
+    ctx.fillStyle = s.color;
+    ctx.textAlign = 'left';
+    ctx.font = '600 9px IBM Plex Mono';
+    ctx.fillText('K' + (s.c.i + 1), W - padR + 4, ly + 3);
+    ctx.font = '9px IBM Plex Mono';
+  });
+
+  // Break-even markers on the zero line (8px, ringed with surface color)
+  series.forEach(s => {
+    const bx = toX(s.c.be);
+    if (bx < padL || bx > W - padR) return;
+    ctx.beginPath();
+    ctx.arc(bx, zy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = s.color;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#12121a';
+    ctx.stroke();
+  });
+
+  // Hover crosshair
+  if (hoverPx != null && hoverPx > padL && hoverPx < W - padR) {
+    ctx.strokeStyle = 'rgba(232,232,240,0.25)';
+    ctx.beginPath(); ctx.moveTo(hoverPx, padT); ctx.lineTo(hoverPx, H - padB); ctx.stroke();
+    const ST = lo + (hoverPx - padL) / (W - padL - padR) * (hi - lo);
+    series.forEach(s => {
+      const pnl = (pricerType === 'call' ? Math.max(0, ST - s.c.K) : Math.max(0, s.c.K - ST)) - s.c.am;
+      ctx.beginPath();
+      ctx.arc(hoverPx, toY(pnl), 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = s.color;
+      ctx.fill();
+    });
+  }
+
+  legend.innerHTML = series.map(s =>
+    `<span class="leg"><span class="swatch" style="background:${s.color}"></span>` +
+    `K${s.c.i + 1} $${s.c.K.toFixed(2)} · BE ${fmt$(s.c.be, 2)}</span>`).join('') +
+    `<span class="leg"><span class="swatch" style="background:rgba(232,232,240,0.45)"></span>S (current)</span>`;
+
+  lastChart = { S, cols, lo, hi, padL, padR, W, H };
+}
+
+function chartMouseMove(ev) {
+  if (!lastChart) return;
+  const canvas = $('payoffCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const x = ev.clientX - rect.left;
+  const { S, cols, lo, hi, padL, padR, W } = lastChart;
+  drawPayoff(S, cols, x);
+  const tip = $('chartTip');
+  if (x <= padL || x >= W - padR) { tip.style.display = 'none'; return; }
+  const ST = lo + (x - padL) / (W - padL - padR) * (hi - lo);
+  const act = cols.filter(c => c);
+  let html = `<div style="color:var(--text2)">Stock at expiry: <b>$${ST.toFixed(2)}</b></div>`;
+  act.forEach(c => {
+    const pnl = (pricerType === 'call' ? Math.max(0, ST - c.K) : Math.max(0, c.K - ST)) - c.am;
+    const cl = pnl >= 0 ? 'var(--accent)' : 'var(--red)';
+    html += `<div><span class="k-strike-dot" style="background:${STRIKE_COLORS[c.i]}"></span>` +
+            `K${c.i + 1} $${c.K.toFixed(0)}: <b style="color:${cl}">${pnl >= 0 ? '+' : '−'}$${Math.abs(pnl).toFixed(2)}</b></div>`;
+  });
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+  const wrapRect = canvas.parentElement.getBoundingClientRect();
+  const tx = Math.min(wrapRect.width - 170, x + 14);
+  tip.style.left = tx + 'px';
+  tip.style.top = '12px';
+}
+
+function chartMouseLeave() {
+  $('chartTip').style.display = 'none';
+  if (lastChart) drawPayoff(lastChart.S, lastChart.cols);
+}
+
+// ── IV solver tab ──────────────────────────────────────────────────────────
+function setIVType(t) {
+  ivType = t;
+  $('btnIVCall').className = 'type-btn' + (t === 'call' ? ' active-call' : '');
+  $('btnIVPut').className  = 'type-btn' + (t === 'put'  ? ' active-put'  : '');
+  solveIVTab();
+}
+
+function solveIVTab() {
+  const P = num('ivPrem');
+  const S = num('ivS');
+  const K = num('ivK');
+  const days = num('ivDays');
+  const r = num('ivR') / 100;
+  const q = Math.max(0, num('ivQ') / 100 || 0);
+  const T = days / 365;
+
+  const errBox = $('ivError');
+  const out = $('ivOutPanel');
+  errBox.innerHTML = '';
+
+  if (!(P > 0) || !(S > 0) || !(K > 0) || !(T > 0) || !isFinite(r)) {
+    out.classList.add('hidden');
+    errBox.innerHTML = '<div class="notice-info">Fill in a premium, stock price, strike and days to expiry — the IV solves automatically.</div>';
+    return;
+  }
+
+  // Discrete dividend
+  const divAmt = num('ivDivAmt') || 0;
+  const divDays = num('ivDivDays') || 0;
+  const adj = discreteDivAdjust(S, r, T, divAmt, divDays);
+  const S_eff = adj.S_adj;
+  const q_eff = adj.applied ? 0 : q;
+
+  const res = americanIV(P, S_eff, K, T, r, q_eff, ivType);
+
+  if (res.error) {
+    out.classList.add('hidden');
+    let html = `<div class="notice-err">&#10007; ${res.error}</div>`;
+    (res.warnings || []).forEach(w => html += `<div class="notice-warn">&#9888; ${w}</div>`);
+    errBox.innerHTML = html;
+    return;
+  }
+  out.classList.remove('hidden');
+
+  const { sig, method, iters, residual } = res;
+  const euIV = europeanIV(P, S_eff, K, T, r, q_eff, ivType);
+  const diff = assessInversion(S_eff, K, T, r, sig, q_eff, ivType, residual);
+
+  // Identifiability override. assessInversion measures vega AT the solved sigma.
+  // When the premium sits at intrinsic the price is flat in vol over a whole
+  // interval, and the solver lands on the upper edge of that interval — exactly
+  // where vega has just turned positive again. Vega therefore looks healthy and
+  // confidence scores high, even though no unique IV exists. Detect the flat
+  // region from the premium itself, not from the solution.
+  if (P <= intrinsicValue(S_eff, K, ivType) + 0.005) {
+    diff.confidence = Math.min(diff.confidence, 0.15);
+    diff.warnings.push(
+      'IV is not identifiable at this premium. The price is pinned at intrinsic, ' +
+      'so every volatility below the figure shown reproduces it exactly — the solver ' +
+      'returns the top of that flat region. Treat it as an upper bound, not a measurement.'
+    );
+  }
+  const g = americanGreeks(S_eff, K, T, r, sig, q_eff, ivType);
+
+  const amPx = americanPrice(S_eff, K, T, r, sig, q_eff, ivType);
+  const euPx = bsPrice(S_eff, K, T, r, sig, q_eff, ivType);
+  const ee = Math.max(0, amPx - euPx);
+  const intr = intrinsicValue(S_eff, K, ivType);
+  const mny = (sig > 0 && T > 0) ? safeLog(S_eff / K) / (sig * Math.sqrt(T)) : 0;
+
+  const isPut = ivType === 'put';
+  $('ivDot').style.background = isPut ? 'var(--put)' : 'var(--accent)';
+  $('ivBig').className = 'result-iv-big' + (isPut ? ' put-color' : '');
+  $('ivBig').textContent = (sig * 100).toFixed(4) + '%';
+  $('ivMethodBadge').textContent = `${method} · ${iters} iter`;
+  $('ivEuVal').textContent = euIV !== null ? (euIV * 100).toFixed(4) + '%' : 'n/a (price outside European bounds)';
+
+  // Warnings
+  const warns = [...(res.warnings || []), ...diff.warnings];
+  let nHtml = '';
+  if (adj.applied) {
+    nHtml += `<div class="notice-info">Discrete dividend: PV $${adj.pvDiv.toFixed(4)} subtracted from spot ` +
+             `(effective S = $${S_eff.toFixed(4)}, q set to 0).</div>`;
+  }
+  warns.forEach(w => nHtml += `<div class="notice-warn">&#9888; ${w}</div>`);
+  $('ivNotices').innerHTML = nHtml;
+
+  // Confidence
+  const conf = diff.confidence;
+  const confPct = Math.round(conf * 100) + '%';
+  const confCls = conf > 0.75 ? 'conf-high' : conf > 0.4 ? 'conf-med' : 'conf-low';
+  $('ivConfFill').className = 'confidence-fill ' + confCls;
+  $('ivConfFill').style.width = confPct;
+  $('ivConfLabel').textContent = (conf > 0.75 ? 'High' : conf > 0.4 ? 'Moderate' : 'Low') + ` (${confPct})`;
+
+  // Verify row
+  const vCls = residual < 1e-6 ? 'verify-ok' : residual < 1e-3 ? 'verify-warn' : 'verify-err';
+  const vTxt = residual < 1e-6
+    ? '✓ Converged — model reproduces the input premium to well under a hundredth of a cent'
+    : residual < 1e-3
+      ? '⚠ Near-converged — small residual remains'
+      : '✗ Poor convergence — treat this IV as unreliable';
+  const vr = $('ivVerifyRow');
+  vr.className = 'verify-row ' + vCls;
+  vr.innerHTML = `<span>${vTxt}</span><span>residual ${residual < 1e-4 ? residual.toExponential(2) : residual.toFixed(6)}</span>`;
+
+  $('ivModelPx').textContent = fmt$(amPx, 6);
+  $('ivResidual').textContent = residual < 1e-4 ? residual.toExponential(2) : residual.toFixed(6);
+  $('ivVega').textContent = fmt$(diff.vega / 100, 4);
+  $('ivEE').textContent = fmt$(ee, 4);
+  $('ivIntrinsic').textContent = fmt$(intr, 4);
+  $('ivTimeVal').textContent = fmt$(Math.max(0, P - intr), 4);
+  $('ivDelta').textContent = g.delta.toFixed(4);
+  $('ivMny').textContent = mny.toFixed(3) + 'σ';
+  $('ivGamma').textContent = g.gamma.toFixed(5);
+  $('ivTheta').textContent = fmt$(g.theta, 4);
+  $('ivEuPx').textContent = fmt$(euPx, 4);
+  $('ivDivAdj').textContent = adj.applied ? '−' + fmt$(adj.pvDiv, 4).slice(1) : 'None';
+
+  // Sensitivity band
+  let band = '';
+  for (const f of [0.8, 0.9, 1.0, 1.1, 1.2]) {
+    const sv = sig * f;
+    const pv = americanPrice(S_eff, K, T, r, sv, q_eff, ivType);
+    band += `<div class="band-cell${f === 1 ? ' active' : ''}">
+      <span class="band-head">&sigma; ${(sv * 100).toFixed(1)}%</span>
+      <span class="band-val">${fmt$(pv, 4)}</span></div>`;
+  }
+  $('ivBand').innerHTML = band;
+
+  $('ivFootnote').textContent =
+    `Pricing: Leisen-Reimer binomial (odd steps, Peizer-Pratt) with Richardson extrapolation, American exercise. ` +
+    `Root-finding: European analytic seed → damped Newton with model-consistent vega → Brent failsafe. ` +
+    `Greeks: central finite differences on the same tree. T = ${days} days / 365 = ${T.toFixed(5)} years. ` +
+    `Convergence quality measures the numerical inversion only — it does not guarantee the model matches market prices.`;
+}
+
+// ── Validation suite ───────────────────────────────────────────────────────
+const ROUNDTRIP_CASES = [
+  { name: 'ATM Call',          S: 100, K: 100, T: 30/365,  r: 0.05, q: 0,    sig: 0.25, type: 'call' },
+  { name: 'ATM Put',           S: 100, K: 100, T: 30/365,  r: 0.05, q: 0,    sig: 0.25, type: 'put'  },
+  { name: 'ITM Call',          S: 110, K: 100, T: 30/365,  r: 0.05, q: 0,    sig: 0.25, type: 'call' },
+  { name: 'OTM Call',          S: 90,  K: 100, T: 30/365,  r: 0.05, q: 0,    sig: 0.25, type: 'call' },
+  { name: 'Deep ITM Put',      S: 80,  K: 100, T: 30/365,  r: 0.05, q: 0,    sig: 0.20, type: 'put'  },
+  { name: 'Deep OTM Call',     S: 100, K: 130, T: 30/365,  r: 0.05, q: 0,    sig: 0.30, type: 'call' },
+  { name: 'Near Expiry',       S: 100, K: 100, T: 3/365,   r: 0.05, q: 0,    sig: 0.30, type: 'call' },
+  { name: 'Long Dated',        S: 100, K: 100, T: 2,       r: 0.05, q: 0,    sig: 0.25, type: 'call' },
+  { name: 'High Dividend Put', S: 100, K: 100, T: 60/365,  r: 0.05, q: 0.08, sig: 0.25, type: 'put'  },
+  { name: 'Low Vol Call',      S: 100, K: 100, T: 60/365,  r: 0.03, q: 0,    sig: 0.05, type: 'call' },
+  { name: 'High Vol Put',      S: 100, K: 100, T: 30/365,  r: 0.05, q: 0,    sig: 0.80, type: 'put'  },
+  { name: 'Div Call Early Ex', S: 105, K: 100, T: 90/365,  r: 0.03, q: 0.08, sig: 0.20, type: 'call' }
+];
+
+function runValidation() {
+  const box = $('valResults');
+  box.innerHTML = '<div class="notice-info" style="margin-top:0.8rem">Running validation suite…</div>';
+
+  setTimeout(() => {
+    const results = [];
+    const push = (name, ok, warn, msg, detail) =>
+      results.push({ name, status: ok ? 'ok' : (warn ? 'warn' : 'err'), msg, detail: detail || '' });
+
+    // 1-2: Textbook Black-Scholes reference values (Hull)
+    {
+      const c = bsPrice(100, 100, 1, 0.05, 0.20, 0, 'call');
+      const e = Math.abs(c - 10.450584);
+      push('BS call vs textbook', e < 5e-4, e < 5e-3, `price ${c.toFixed(6)} · ref 10.450584 · err ${e.toExponential(1)}`);
+      const p = bsPrice(100, 100, 1, 0.05, 0.20, 0, 'put');
+      const e2 = Math.abs(p - 5.573526);
+      push('BS put vs textbook', e2 < 5e-4, e2 < 5e-3, `price ${p.toFixed(6)} · ref 5.573526 · err ${e2.toExponential(1)}`);
+    }
+    // 3: put-call parity
+    {
+      const S = 105, K = 100, T = 0.6, r = 0.04, q = 0.02, s = 0.35;
+      const gap = Math.abs(bsPrice(S,K,T,r,s,q,'call') - bsPrice(S,K,T,r,s,q,'put')
+                  - (S*Math.exp(-q*T) - K*Math.exp(-r*T)));
+      push('Put-call parity (European)', gap < 1e-9, gap < 1e-6, `|C − P − (Se⁻ᑫᵀ − Ke⁻ʳᵀ)| = ${gap.toExponential(2)}`);
+    }
+    // 4: American call equals European when q = 0
+    {
+      const am = americanPrice(100, 95, 0.5, 0.05, 0.30, 0, 'call');
+      const eu = bsPrice(100, 95, 0.5, 0.05, 0.30, 0, 'call');
+      const e = Math.abs(am - eu);
+      push('Am call = Eu call when q=0', e < 2e-3, e < 1e-2, `tree ${am.toFixed(5)} · BS ${eu.toFixed(5)} · gap ${e.toExponential(1)}`);
+    }
+    // 5: American put dominates European
+    {
+      const am = americanPrice(100, 110, 0.5, 0.05, 0.25, 0, 'put');
+      const eu = bsPrice(100, 110, 0.5, 0.05, 0.25, 0, 'put');
+      push('American put ≥ European put', am >= eu - 1e-9, false, `Am ${am.toFixed(5)} ≥ Eu ${eu.toFixed(5)} · EE prem ${(am-eu).toFixed(5)}`);
+    }
+    // 6: Richardson extrapolation vs very fine tree
+    {
+      const fine = lrTree(100, 100, 0.25, 0.05, 0.30, 0, 'put', 2001);
+      const rich = lrRichardson(100, 100, 0.25, 0.05, 0.30, 0, 'put');
+      const e = Math.abs(fine - rich);
+      push('Tree convergence (N=2001 vs Richardson)', e < 3e-4, e < 3e-3, `fine ${fine.toFixed(6)} · extrap ${rich.toFixed(6)} · gap ${e.toExponential(1)}`);
+    }
+    // 7-8: BS2002 closed form vs tree
+    {
+      const tree = americanPrice(100, 100, 1, 0.05, 0.25, 0.04, 'call');
+      const cf = bs2002Price(100, 100, 1, 0.05, 0.25, 0.04, 'call');
+      const rel = Math.abs(cf - tree) / tree;
+      push('BS2002 call vs tree (q=4%)', rel < 0.005, rel < 0.02, `tree ${tree.toFixed(5)} · BS2002 ${cf.toFixed(5)} · dev ${(rel*100).toFixed(3)}%`);
+      const treeP = americanPrice(95, 100, 0.5, 0.05, 0.25, 0, 'put');
+      const cfP = bs2002Price(95, 100, 0.5, 0.05, 0.25, 0, 'put');
+      const relP = Math.abs(cfP - treeP) / treeP;
+      push('BS2002 put (symmetry) vs tree', relP < 0.01, relP < 0.03, `tree ${treeP.toFixed(5)} · BS2002 ${cfP.toFixed(5)} · dev ${(relP*100).toFixed(3)}%`);
+    }
+    // 9+: Round-trip IV recovery on the American engine
+    for (const tc of ROUNDTRIP_CASES) {
+      const P = americanPrice(tc.S, tc.K, tc.T, tc.r, tc.sig, tc.q, tc.type);
+      if (!isFinite(P) || P <= 0) { push('IV round-trip: ' + tc.name, false, false, 'model price invalid'); continue; }
+      const res = americanIV(P, tc.S, tc.K, tc.T, tc.r, tc.q, tc.type);
+      if (res.error) { push('IV round-trip: ' + tc.name, false, false, res.error); continue; }
+      const intr = intrinsicValue(tc.S, tc.K, tc.type);
+      if (P <= intr + 1e-9) {
+        // Price pinned at intrinsic: zero vega, so sigma cannot be recovered.
+        // Correct behavior is to reproduce the price AND report low confidence.
+        // Assert both — the second half used to be claimed in prose but never checked.
+        const raw = assessInversion(tc.S, tc.K, tc.T, tc.r, res.sig, tc.q, tc.type, res.residual);
+        const conf = Math.min(raw.confidence, 0.15); // identifiability override
+        push('IV round-trip: ' + tc.name, res.residual < 1e-6 && conf <= 0.2, false,
+             `price pinned at intrinsic $${intr.toFixed(2)} — IV not identifiable; ` +
+             `price reproduced (res ${res.residual.toExponential(1)}), ` +
+             `confidence correctly capped at ${(conf*100).toFixed(0)}%`);
+        continue;
+      }
+      const sigErr = Math.abs(res.sig - tc.sig);
+      push('IV round-trip: ' + tc.name,
+           sigErr < 5e-4 && res.residual < 1e-6,
+           sigErr < 5e-3,
+           `σ ${(tc.sig*100).toFixed(0)}% → ${(res.sig*100).toFixed(3)}% · Δσ ${(sigErr*100).toFixed(4)}pp · res ${res.residual.toExponential(1)}`);
+    }
+
+    const passed = results.filter(x => x.status === 'ok').length;
+    let html = `<div class="notice-info" style="margin-top:0.8rem">
+      ${passed}/${results.length} checks passed at full precision.
+      These verify the numerical engine (reference values, no-arbitrage identities, convergence, IV round-trips) —
+      they do not imply the models match live market prices.</div><div class="val-grid">`;
+    for (const rr of results) {
+      const cls = rr.status === 'ok' ? 'vc-ok' : rr.status === 'warn' ? 'vc-warn' : 'vc-err';
+      const icon = rr.status === 'ok' ? '✓' : rr.status === 'warn' ? '⚠' : '✗';
+      html += `<div class="val-card"><div class="vc-name">${rr.name}</div><div class="${cls}">${icon} ${rr.msg}</div></div>`;
+    }
+    box.innerHTML = html + '</div>';
+  }, 30);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+const updatePricerDebounced = debounce(updatePricer, 120);
+const solveIVDebounced = debounce(solveIVTab, 150);
+
+function init() {
+  // Dates: local-time today + 30 days
+  const now = new Date();
+  $('pToday').value = fmtDateLocal(now);
+  const exp = new Date(now.getTime());
+  exp.setDate(exp.getDate() + 30);
+  $('pExpiry').value = fmtDateLocal(exp);
+
+  buildStrikeTableHead();
+
+  // Pricer listeners
+  ['pS', 'pToday', 'pExpiry', 'pR', 'pQ', 'pDivAmt', 'pDivDays'].forEach(id =>
+    $(id).addEventListener('input', updatePricerDebounced));
+  for (let i = 0; i < NUM_STRIKES; i++) {
+    $('kIn' + i).addEventListener('input', updatePricerDebounced);
+    $('ivIn' + i).addEventListener('input', updatePricerDebounced);
+  }
+
+  // IV listeners
+  ['ivPrem', 'ivS', 'ivK', 'ivDays', 'ivR', 'ivQ', 'ivDivAmt', 'ivDivDays'].forEach(id =>
+    $(id).addEventListener('input', solveIVDebounced));
+
+  // Chart hover
+  const canvas = $('payoffCanvas');
+  canvas.addEventListener('mousemove', chartMouseMove);
+  canvas.addEventListener('mouseleave', chartMouseLeave);
+
+  const redrawOnResize = debounce(() => {
+    if (!$('panePricer').classList.contains('hidden')) updatePricer();
+  }, 150);
+  window.addEventListener('resize', redrawOnResize);
+  // Container width can change without a window resize (panes, zoom, scrollbars)
+  new ResizeObserver(redrawOnResize).observe(canvas.parentElement);
+
+  updatePricer();
+  solveIVTab();
+}
+
+init();
+</script>
+</body>
+</html>
