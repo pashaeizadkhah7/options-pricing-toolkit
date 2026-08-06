@@ -1,4 +1,4 @@
-**Live demo:** https://pashaeizadkhah7.github.io/options-pricing-toolkit/
+**Live demo:** [https://pashaeizadkhah7.github.io/options-pricing-toolkit/](https://options-pricing-toolkit.netlify.app/)
 # Options Toolkit — Premium Pricer & Implied Volatility Solver
 
 A single-file, zero-dependency options analytics tool that runs entirely in your browser.
